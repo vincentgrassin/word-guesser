@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./packages/backend # Point to the backend folder
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: ${NODE_ENV:-development} # Use production by default
+    volumes:
+      - ./packages/backend:/app # Mount the backend directory for hot-reloading
+      - /app/node_modules # Prevent overwriting node_modules in the container
+    ports:
+      - "3000:3000" # Expose Fastify's port
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+
+  frontend:
+    build:
+      context: ./packages/frontend # Point to the frontend folder
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: ${NODE_ENV:-development}
+    volumes:
+      - ./packages/frontend:/app # Mount the frontend directory for hot-reloading
+      - /app/node_modules # Prevent overwriting node_modules in the container
+    ports:
+      - "5173:5173" # Expose the Vite development server port
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - VITE_API_URL=http://localhost:3000 # API URL for the frontend to connect to the backend
+
+networks:
+  default:
+    driver: bridge
