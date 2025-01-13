@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import TheWelcome from '../components/TheWelcome.vue'
+import ConnectionManager from '@/components/ConnectionManager.vue'
 </script>
 
 <template>
   <main>
-    <TheWelcome />
+    <h1>home</h1>
+    <ConnectionManager />
   </main>
 </template>

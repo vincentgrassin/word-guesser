@@ -50,8 +50,9 @@ build-prod-frontend:
 
 start-prod-frontend: 
 	NODE_ENV=production $(DOCKER_COMPOSE) up --build frontend
-	
-	
+
+sh-frontend: 	
+	docker exec -it word-guesser_frontend_1 sh
 ##
 ## Backend
 ## -----
@@ -71,4 +72,6 @@ build-prod-backend:
 start-prod-backend: 
 	NODE_ENV=production $(DOCKER_COMPOSE) up --build backend
 
+sh-backend: 	
+	docker exec -it word-guesser_backend_1 sh
 
