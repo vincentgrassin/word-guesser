@@ -1,6 +1,6 @@
 import fastify from "fastify";
-import websocketPlugin, { WebSocket } from "@fastify/websocket";
-import cors from "@fastify/cors";
+import websocketPlugin from "@fastify/websocket";
+import { WebSocket } from "ws";
 
 const WebSocketState = {
   CONNECTING: 0,
@@ -11,36 +11,52 @@ const WebSocketState = {
 
 const server = fastify();
 
-const clients = new Set<WebSocket>();
+interface Client {
+  socket: WebSocket;
+  gameId: string;
+}
 
-console.log("starting server");
+const clients = new Set<Client>();
 
+console.log("Starting server");
 server.register(websocketPlugin);
-// server.register(cors, {
-//   origin: "http://localhost:5173", // Allow the frontend origin
-//   methods: ["GET"], // Allow WebSocket GET requests
-//   credentials: true, // Include cookies if needed
-// });
-
-server.get("/", async (request, reply) => {
-  return "pong\n";
-});
 
 server.register(async function (fastify) {
   fastify.get(
-    "/chat/:roomId",
+    "/game/:gameId",
     { websocket: true },
     (socket /* WebSocket */, req /* FastifyRequest */) => {
-      console.log("Entering chat room", req.params);
+      const gameId = (req.params as { gameId: string }).gameId;
+      console.log("Entering chat room", gameId);
 
-      clients.add(socket);
+      // Add new client with its room ID
+      const client = { socket, gameId };
+      clients.add(client);
+
       socket.on("message", (message) => {
-        const parsedMessage = message.toString();
+        const rawMessage = message.toString();
+        const parsedMessage = JSON.parse(rawMessage);
+
+        // Only broadcast to clients in the same room
         clients.forEach((client) => {
-          if (client.readyState === WebSocketState.OPEN) {
-            client.send(parsedMessage);
+          if (
+            client.gameId === gameId &&
+            client.socket.readyState === WebSocketState.OPEN
+          ) {
+            client.socket.send(rawMessage);
           }
         });
+      });
+
+      // Clean up on disconnect
+      socket.on("close", () => {
+        console.log(`Client disconnected from room ${gameId}`);
+        clients.delete(client);
+      });
+
+      socket.on("error", (error) => {
+        console.error(`Error in room ${gameId}:`, error);
+        clients.delete(client);
       });
     }
   );
