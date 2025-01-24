@@ -1,4 +1,4 @@
-import { Client, Game, Message, Round } from "./types.js";
+import { Client, EVENT, Game, Message, Player, Round } from "./types.js";
 import { WebSocket } from "ws";
 
 export const WebSocketState = {
@@ -65,6 +65,7 @@ export const buildInitialGame = (gameId: string): Game => {
     gameId,
     rounds: [],
     messages: [],
+    players: new Set<Player>(),
     settings: {
       players: [],
       status: "ongoing",
@@ -117,4 +118,14 @@ export const removePlayerFromGame = (clients: Set<Client>, userId: string) => {
   connectedClient.game.settings.players =
     connectedClient.game.settings.players.filter((id) => userId !== id);
   return connectedClient.game;
+};
+
+export const generateUID = () => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
+export const broadcastToPlayers = (players: Set<Player>, message: string) => {
+  players.forEach((player) => {
+    player.socket.send(message);
+  });
 };

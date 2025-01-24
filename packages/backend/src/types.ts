@@ -4,6 +4,7 @@ export type Message = {
   userId: string;
   message: string;
   date: Date;
+  event: EVENT;
 };
 
 export type Round = {
@@ -23,6 +24,7 @@ export type Game = {
   messages: Message[];
   settings: GameSettings;
   rounds: Round[];
+  players: Set<Player>;
 };
 
 export type Client = {
@@ -31,3 +33,11 @@ export type Client = {
   game: Game;
   userId: string;
 };
+
+export type Player = {
+  socket: WebSocket;
+  userId: string;
+  // gameIds: string[];
+};
+
+export type EVENT = "CREATE_GAME" | "DISCONNECT_PLAYER" | "PLAY_ROUND";

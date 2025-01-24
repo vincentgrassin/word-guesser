@@ -3,9 +3,7 @@
 import { useSocket } from '@/composable/useSocket'
 import { ref, inject } from 'vue'
 
-const userName = inject('userName')
 const userId = (inject('userId') || '').toString()
-console.log({ userId })
 const { id } = defineProps<{
   id: string
 }>()

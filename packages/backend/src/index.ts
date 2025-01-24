@@ -1,9 +1,12 @@
 import fastify from "fastify";
 import websocketPlugin from "@fastify/websocket";
-import { Client, Message } from "./types.js";
+import { Client, Game, Message, Player } from "./types.js";
 import {
   broadCastMessageByGame,
+  broadcastToPlayers,
   buildClient,
+  buildInitialGame,
+  generateUID,
   getClientsByGameId,
   isClientOfCurrentGame,
   removePlayerFromGame,
@@ -13,6 +16,8 @@ import {
 const server = fastify();
 
 const clients = new Set<Client>();
+const games = new Set<Game>();
+const players = new Set<Player>();
 
 console.log("Starting server");
 server.register(websocketPlugin);
@@ -63,6 +68,48 @@ server.register(async function (fastify) {
         console.error(`Error in room ${gameId}:`, error);
         clients.delete(client);
       });
+    }
+  );
+
+  fastify.get(
+    "/connect/:userId",
+    { websocket: true },
+    (socket /* WebSocket */, req /* FastifyRequest */) => {
+      const userId = (req.params as { userId: string }).userId;
+      const newPlayer = {
+        userId,
+        socket,
+      };
+
+      players.add(newPlayer);
+      newPlayer.socket.send(
+        JSON.stringify({ event: "LIST_GAMES", payload: Array.from(games) })
+      );
+
+      socket.on("message", (m) => {
+        const rawMessage = m.toString();
+        const { event, message, userId, date }: Message =
+          JSON.parse(rawMessage);
+
+        switch (event) {
+          case "CREATE_GAME":
+            const uid = generateUID();
+            const newGame = buildInitialGame(uid);
+            games.add(newGame);
+            broadcastToPlayers(
+              players,
+              JSON.stringify({ event, payload: newGame })
+            );
+            break;
+        }
+      });
+
+      // Clean up on disconnect
+      socket.on("close", () => {
+        players.delete(newPlayer);
+      });
+
+      socket.on("error", (error) => {});
     }
   );
 });

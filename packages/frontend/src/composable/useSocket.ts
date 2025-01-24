@@ -1,28 +1,5 @@
+import type { Game } from '@/utils/types'
 import { inject, reactive } from 'vue'
-
-type Message = {
-  userId: string
-  message: string
-  date: Date
-}
-type Round = {
-  roundId: number
-  player1: Message | undefined
-  player2: Message | undefined
-  status: 'win' | 'ongoing'
-}
-
-type GameSettings = {
-  status: 'win' | 'ongoing'
-  players: string[]
-}
-
-type Game = {
-  gameId: string
-  messages: Message[]
-  settings: GameSettings
-  rounds: Round[]
-}
 
 type GameState = {
   connected: boolean
