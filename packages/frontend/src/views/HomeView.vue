@@ -13,7 +13,7 @@ provide('userId', uid)
     <h1>Word Guesser</h1>
     <p>User: {{ userName }}</p>
     <input v-model="userName" className="text-black" />
-    <GameManager :id="123" />
-    <GameManager :id="456" />
+    <GameManager id="123" />
+    <GameManager id="456" />
   </main>
 </template>

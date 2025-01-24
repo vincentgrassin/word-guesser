@@ -7,7 +7,7 @@ const userName = inject('userName')
 const userId = (inject('userId') || '').toString()
 console.log({ userId })
 const { id } = defineProps<{
-  id: number
+  id: string
 }>()
 const { connect, disconnect, message, state } = useSocket(id)
 
@@ -32,9 +32,17 @@ const sendMessage = () => {
         <input v-model="newMessage" placeholder="Type a message" className="text-black" />
         <button @click="sendMessage">Send Message</button>
       </div>
+      <div>
+        <p>
+          {{ state.game?.gameId }}
+        </p>
+        <p>
+          {{ JSON.stringify(state.game?.settings) }}
+        </p>
+      </div>
       <ul>
-        <li v-for="(message, index) in state.messages" :key="index">
-          {{ message }}
+        <li v-for="(round, index) in state.game?.rounds" :key="index">
+          {{ round }}
         </li>
       </ul>
     </div>
