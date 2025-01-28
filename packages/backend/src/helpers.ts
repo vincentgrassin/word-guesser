@@ -1,5 +1,11 @@
-import { Client, EVENT, Game, Message, Player, Round } from "./types.js";
-import { WebSocket } from "ws";
+import {
+  Client,
+  Game,
+  Message,
+  Player,
+  Round,
+  WebSocket,
+} from "@word-guesser/shared";
 
 export const WebSocketState = {
   CONNECTING: 0,

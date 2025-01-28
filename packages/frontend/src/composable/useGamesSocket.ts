@@ -1,4 +1,4 @@
-import type { EVENT, Game, MessageResponse } from '@/utils/types'
+import type { Game, MessageResponse, EVENT } from '@word-guesser/shared'
 import { reactive } from 'vue'
 
 type GamesState = {

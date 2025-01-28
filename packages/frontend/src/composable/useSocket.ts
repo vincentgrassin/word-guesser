@@ -1,4 +1,4 @@
-import type { Game } from '@/utils/types'
+import type { Game } from '@word-guesser/shared'
 import { inject, reactive } from 'vue'
 
 type GameState = {

@@ -1,6 +1,6 @@
 import fastify from "fastify";
 import websocketPlugin from "@fastify/websocket";
-import { Client, Game, Message, Player } from "./types.js";
+import { Client, Game, Message, Player } from "@word-guesser/shared";
 import {
   broadCastMessageByGame,
   broadcastToPlayers,

@@ -14,6 +14,9 @@ COPY package.json pnpm-lock.yaml ./
 # Install pnpm globally
 RUN npm install -g pnpm
 
+# Build the shared package
+RUN pnpm --filter @word-guesser/shared build
+
 # Install frontend dependencies using pnpm
 RUN NODE_ENV=development pnpm  install
 
