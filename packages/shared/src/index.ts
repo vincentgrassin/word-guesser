@@ -1,27 +1,21 @@
 import { WebSocket as WsWebSocket } from "ws";
 
-export type Client = {
-  socket: WsWebSocket;
-  gameId: string;
-  game: Game;
-  userId: string;
-};
-
 export type Player = {
   socket: WsWebSocket;
   userId: string;
 };
 
 export type MessageResponse = {
-  event: EVENT;
-  payload: string;
+  event: SocketEvent;
+  payload: unknown;
 };
 
 export type Message = {
-  userId: string;
-  message: string;
+  userId?: string;
+  gameId?: string;
+  content?: string;
   date: Date;
-  event: EVENT;
+  event: SocketEvent;
 };
 export type Round = {
   roundId: number;
@@ -40,20 +34,14 @@ export type Game = {
   messages: Message[];
   settings: GameSettings;
   rounds: Round[];
-  players: Set<Player>;
+  players: Omit<Player, "socket">[];
 };
 
-export type EVENT =
+export type SocketEvent =
   | "CREATE_GAME"
   | "DISCONNECT_PLAYER"
   | "PLAY_ROUND"
-  | "LIST_GAMES";
-
-export const EVENTS = {
-  CREATE_GAME: "CREATE_GAME",
-  DISCONNECT_PLAYER: "DISCONNECT_PLAYER",
-  PLAY_ROUND: "PLAY_ROUND",
-  LIST_GAMES: "LIST_GAMES",
-} as const;
+  | "LIST_GAMES"
+  | "JOIN_GAME";
 
 export type WebSocket = WsWebSocket;

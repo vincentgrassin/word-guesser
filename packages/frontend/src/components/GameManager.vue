@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-// import { connect, disconnect, message, state } from '@/socket'
 import { useSocket } from '@/composable/useSocket'
 import { ref, inject } from 'vue'
 

@@ -1,11 +1,4 @@
-import {
-  Client,
-  Game,
-  Message,
-  Player,
-  Round,
-  WebSocket,
-} from "@word-guesser/shared";
+import { Game, Message, Player, Round } from "@word-guesser/shared";
 
 export const WebSocketState = {
   CONNECTING: 0,
@@ -13,34 +6,6 @@ export const WebSocketState = {
   CLOSING: 2,
   CLOSED: 3,
 } as const;
-
-export function getClientsByGameId(
-  gameId: string,
-  clients: Set<Client>
-): Set<Client> {
-  const matchingClients = new Set<Client>();
-  clients.forEach((client) => {
-    if (client.gameId === gameId) {
-      matchingClients.add(client);
-    }
-  });
-  return matchingClients;
-}
-
-export const computePlayers = (
-  userId: string,
-  gameId: string,
-  clientsSet: Set<Client>
-) => {
-  let userIds: string[] = [];
-
-  const clients = Array.from(clientsSet);
-  if (!(clients.length === 0)) {
-    userIds = clients.map((c) => c.userId);
-  }
-  userIds.push(userId);
-  return userIds;
-};
 
 export const updateRounds = (rounds: Round[], message: Message) => {
   if (rounds.length === 0) {
@@ -71,7 +36,7 @@ export const buildInitialGame = (gameId: string): Game => {
     gameId,
     rounds: [],
     messages: [],
-    players: new Set<Player>(),
+    players: [],
     settings: {
       players: [],
       status: "ongoing",
@@ -79,59 +44,53 @@ export const buildInitialGame = (gameId: string): Game => {
   };
 };
 
-export const buildClient = (
-  socket: WebSocket,
-  connectedClients: Set<Client>,
-  gameId: string,
-  userId: string
-) => {
-  const hasConnectedClients = connectedClients.size > 0;
-  const client: Client = {
-    socket,
-    gameId,
-    userId,
-    game: hasConnectedClients
-      ? Array.from(connectedClients)[0].game
-      : buildInitialGame(gameId),
-  };
-  client.game.settings.players = hasConnectedClients
-    ? computePlayers(userId, gameId, connectedClients)
-    : [userId];
-
-  return client;
-};
-
-export const isClientOfCurrentGame = (client: Client, gameId: string) => {
-  return (
-    client.gameId === gameId && client.socket.readyState === WebSocketState.OPEN
-  );
-};
-
-export const broadCastMessageByGame = (
-  clients: Set<Client>,
-  gameId: string,
-  message: string
-) => {
-  clients.forEach((client) => {
-    if (isClientOfCurrentGame(client, gameId)) {
-      client.socket.send(message);
-    }
-  });
-};
-
-export const removePlayerFromGame = (clients: Set<Client>, userId: string) => {
-  const connectedClient = Array.from(clients)[0];
-  connectedClient.game.settings.players =
-    connectedClient.game.settings.players.filter((id) => userId !== id);
-  return connectedClient.game;
-};
-
 export const generateUID = () => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
-export const broadcastToPlayers = (players: Set<Player>, message: string) => {
+export const broadcast = (players: Player[], message: string) => {
   players.forEach((player) => {
     player.socket.send(message);
   });
 };
+
+export function findPlayer(
+  userId: string,
+  players: Player[]
+): Player | undefined {
+  for (const player of players) {
+    if (player.userId === userId) {
+      return player;
+    }
+  }
+  return undefined;
+}
+
+export function cleanPlayer(player: Player): Omit<Player, "socket"> {
+  const { socket, ...rest } = player;
+  return rest;
+}
+
+export function addPlayer(
+  newPlayer: Player | undefined,
+  players: Player[]
+): boolean {
+  if (!newPlayer) return false;
+
+  for (const player of players) {
+    if (player.userId === newPlayer.userId) {
+      return false;
+    }
+  }
+  players.push(newPlayer);
+  return true;
+}
+
+export function findGame(gameId: string, games: Game[]): Game | undefined {
+  for (const game of games) {
+    if (game.gameId === gameId) {
+      return game;
+    }
+  }
+  return undefined;
+}
