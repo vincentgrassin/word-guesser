@@ -1,5 +1,5 @@
 import websocketPlugin from "@fastify/websocket";
-import { Game, Message, Player } from "@word-guesser/shared";
+import { Game, Message, Player, generateUID } from "@word-guesser/shared";
 import fastify from "fastify";
 import {
   broadcast,
@@ -7,7 +7,6 @@ import {
   cleanPlayer,
   findGame,
   findPlayer,
-  generateUID,
 } from "./helpers.js";
 
 const server = fastify();
@@ -90,7 +89,7 @@ server.register(async function (fastify) {
         switch (event) {
           case "CREATE_GAME":
             const uid = generateUID();
-            const newGame = buildInitialGame(uid);
+            const newGame = buildInitialGame(uid, userId || "");
             games.push(newGame);
             broadcast(players, JSON.stringify({ event, payload: newGame }));
             break;

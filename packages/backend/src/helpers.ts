@@ -31,21 +31,17 @@ export const updateRounds = (rounds: Round[], message: Message) => {
   return rounds;
 };
 
-export const buildInitialGame = (gameId: string): Game => {
+export const buildInitialGame = (gameId: string, userId: string): Game => {
   return {
     gameId,
     rounds: [],
-    messages: [],
     players: [],
     settings: {
-      players: [],
       status: "ongoing",
+      createdBy: userId,
+      createdAt: new Date(Date.now()),
     },
   };
-};
-
-export const generateUID = () => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
 export const broadcast = (players: Player[], message: string) => {

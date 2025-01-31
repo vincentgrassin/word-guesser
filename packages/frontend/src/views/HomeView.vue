@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import GameItem from '@/components/GameItem.vue'
-import { useGamesStore } from '@/composable/useGamesStore'
-import { generateUID } from '@/utils/helpers'
+import { useGamesStore } from '@/stores/useGamesStore'
+import { generateUID } from '@word-guesser/shared'
 import { onMounted, ref } from 'vue'
 const userName = ref('')
-const uid = generateUID()
+const uid = localStorage.getItem('userId') || generateUID()
 const { state, connect, createGame, setUserId } = useGamesStore()
 onMounted(() => {
   connect(uid)
@@ -15,7 +15,8 @@ onMounted(() => {
 <template>
   <main>
     <h1>Word Guesser</h1>
-    <button @:click="() => createGame(uid)">Create game</button>
+    <p>User: {{ state.userId }}</p>
+    <button @:click="() => createGame(state.userId)">Create game</button>
 
     <p>User: {{ userName }}</p>
     <input v-model="userName" className="text-black" />

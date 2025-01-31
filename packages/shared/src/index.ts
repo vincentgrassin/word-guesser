@@ -26,12 +26,12 @@ export type Round = {
 
 export type GameSettings = {
   status: "win" | "ongoing";
-  players: string[];
+  createdBy: string;
+  createdAt: Date;
 };
 
 export type Game = {
   gameId: string;
-  messages: Message[];
   settings: GameSettings;
   rounds: Round[];
   players: Omit<Player, "socket">[];
@@ -45,3 +45,11 @@ export type SocketEvent =
   | "JOIN_GAME";
 
 export type WebSocket = WsWebSocket;
+
+export const generateUID = () => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
+export const getGame = (games: Game[], gameId: string) => {
+  return games.find((g) => g.gameId === gameId);
+};

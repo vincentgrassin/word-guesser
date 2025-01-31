@@ -6,6 +6,7 @@ type GamesState = {
   games: Game[]
   socket: WebSocket | null
   userId: string
+  activeGame: Game | null
 }
 
 export const useGamesStore = defineStore('games', () => {
@@ -13,10 +14,12 @@ export const useGamesStore = defineStore('games', () => {
     games: [],
     socket: null as WebSocket | null,
     userId: '',
+    activeGame: null,
   })
 
   const setUserId = (uid: string) => {
     state.userId = uid
+    localStorage.setItem('userId', uid)
   }
 
   const connect = (userId: string) => {
@@ -53,7 +56,7 @@ export const useGamesStore = defineStore('games', () => {
       }
 
       state.socket.onerror = (error) => {
-        console.error(`WebSocket error in gam`, error)
+        console.error(`WebSocket error for ${userId}`, error)
       }
     }
   }
