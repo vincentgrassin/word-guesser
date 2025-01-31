@@ -1,5 +1,8 @@
 import { WebSocket as WsWebSocket } from "ws";
 
+export type GameStatus = "opened" | "started" | "closed";
+export type GameType = "basic";
+
 export type Player = {
   socket: WsWebSocket;
   userId: string;
@@ -17,17 +20,18 @@ export type Message = {
   date: Date;
   event: SocketEvent;
 };
+
 export type Round = {
   roundId: number;
   player1: Message | undefined;
   player2: Message | undefined;
-  status: "win" | "ongoing";
 };
 
 export type GameSettings = {
-  status: "win" | "ongoing";
+  status: GameStatus;
   createdBy: string;
   createdAt: Date;
+  type: GameType;
 };
 
 export type Game = {

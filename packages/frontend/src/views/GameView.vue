@@ -5,7 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 const { id } = defineProps<{ id: string }>()
 
-const { joinGame, state, connect, setUserId } = useGamesStore()
+const { joinGame, state, connect, setUserId, playRound } = useGamesStore()
 const route = useRoute()
 const game = computed(() => getGame(state.games, id))
 onMounted(() => {
@@ -18,8 +18,10 @@ onMounted(() => {
   joinGame(route.params.id as string, state.userId)
 })
 
-const roundValue = ref('')
-const handleSubmit = () => {}
+const guess = ref('')
+const handleSubmit = () => {
+  playRound(id, state.userId, guess.value)
+}
 </script>
 
 <template>
@@ -28,7 +30,6 @@ const handleSubmit = () => {}
       <h1>Game {{ id }}</h1>
       <p>User: {{ state.userId }}</p>
     </div>
-    {{ game }}
     <div class="p-4 border rounded">
       <h2>Settings</h2>
       {{ game?.settings }}
@@ -53,7 +54,7 @@ const handleSubmit = () => {}
       <label for="roundField" class="block mb-2">Enter something:</label>
       <input
         id="roundField"
-        v-model="roundValue"
+        v-model="guess"
         type="text"
         class="border p-2 w-full rounded text-black"
         placeholder="Type here..."

@@ -43,6 +43,7 @@ export const useGamesStore = defineStore('games', () => {
             break
 
           case 'JOIN_GAME':
+          case 'PLAY_ROUND':
             const game = payload as Game
             const idx = state.games.findIndex((g) => g.gameId === game.gameId)
             if (idx !== -1) state.games.splice(idx, 1, game)
@@ -69,6 +70,10 @@ export const useGamesStore = defineStore('games', () => {
     message({ gameId, userId, event: 'JOIN_GAME' })
   }
 
+  const playRound = (gameId: string, userId: string, content: string) => {
+    message({ gameId, userId, event: 'PLAY_ROUND', content })
+  }
+
   const message = (message: Omit<Message, 'date'>) => {
     const { event, content, gameId, userId } = message
     if (state.socket && state.socket.readyState === WebSocket.OPEN) {
@@ -84,5 +89,5 @@ export const useGamesStore = defineStore('games', () => {
     }
   }
 
-  return { connect, message, disconnect, state, createGame, joinGame, setUserId }
+  return { connect, message, disconnect, state, createGame, joinGame, setUserId, playRound }
 })
