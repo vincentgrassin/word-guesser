@@ -1,5 +1,11 @@
-import { Client, Game, Message, Round } from "./types.js";
-import { WebSocket } from "ws";
+import {
+  Game,
+  GameStatus,
+  GameType,
+  Message,
+  Player,
+  Round,
+} from "@word-guesser/shared";
 
 export const WebSocketState = {
   CONNECTING: 0,
@@ -8,113 +14,144 @@ export const WebSocketState = {
   CLOSED: 3,
 } as const;
 
-export function getClientsByGameId(
-  gameId: string,
-  clients: Set<Client>
-): Set<Client> {
-  const matchingClients = new Set<Client>();
-  clients.forEach((client) => {
-    if (client.gameId === gameId) {
-      matchingClients.add(client);
-    }
-  });
-  return matchingClients;
-}
+export const buildPlayers = (game: Game, player: Player | undefined) => {
+  const players = game.players;
+  if (!player) return players;
+  if (players.length === getMaxPlayers(game.settings.type)) return players;
 
-export const computePlayers = (
-  userId: string,
-  gameId: string,
-  clientsSet: Set<Client>
-) => {
-  let userIds: string[] = [];
+  const hasAlreadyPlayer = players.some((p) => p.userId === player?.userId);
+  if (hasAlreadyPlayer) return players;
 
-  const clients = Array.from(clientsSet);
-  if (!(clients.length === 0)) {
-    userIds = clients.map((c) => c.userId);
-  }
-  userIds.push(userId);
-  return userIds;
+  const cleanedPlayer = cleanPlayer(player);
+  return [...players, cleanedPlayer];
 };
 
-export const updateRounds = (rounds: Round[], message: Message) => {
+export const buildRounds = (game: Game, message: Message) => {
+  const rounds = [...game.rounds];
+  const [player1, player2] = game.players;
+
+  if (!player1 || !player2) {
+    console.error("Invalid player");
+    return rounds;
+  }
+
+  const isPlayer1 = message.userId === player1.userId;
+  const isPlayer2 = message.userId === player2.userId;
+
+  if (!isPlayer1 && !isPlayer2) {
+    console.error("Message sender is not a recognized player in this game");
+    return rounds;
+  }
+
   if (rounds.length === 0) {
+    // No rounds exist, create the first round
     rounds.push({
-      player1: message,
-      player2: undefined,
+      player1: isPlayer1 ? message : undefined,
+      player2: isPlayer2 ? message : undefined,
       roundId: 1,
-      status: "ongoing",
     });
   } else {
-    const currentRound = rounds.length;
-    if (rounds[currentRound - 1].player2) {
+    const currentRound = rounds[rounds.length - 1];
+
+    if (currentRound.player1 && currentRound.player2) {
+      // Both players have sent messages, start a new round
       rounds.push({
-        player1: message,
-        player2: undefined,
-        roundId: currentRound + 1,
-        status: "ongoing",
+        player1: isPlayer1 ? message : undefined,
+        player2: isPlayer2 ? message : undefined,
+        roundId: currentRound.roundId + 1,
       });
     } else {
-      rounds[currentRound - 1].player2 = message;
+      // There's an ongoing round, update the appropriate player
+      if (isPlayer1) {
+        currentRound.player1 = message;
+      } else if (isPlayer2) {
+        currentRound.player2 = message;
+      }
     }
   }
   return rounds;
 };
 
-export const buildInitialGame = (gameId: string): Game => {
+export const buildGameStatus = (game: Game): GameStatus => {
+  let status = game.settings.status;
+  if (game.players.length === getMaxPlayers(game.settings.type)) {
+    status = "started";
+  }
+  const rounds = game.rounds;
+  if (rounds.length) {
+    const lastRound = game.rounds[game.rounds.length - 1];
+    const hasWin = lastRound.player1?.content === lastRound.player2?.content;
+    return hasWin ? "closed" : status;
+  }
+  return status;
+};
+
+export const buildInitialGame = (gameId: string, userId: string): Game => {
   return {
     gameId,
     rounds: [],
-    messages: [],
+    players: [],
     settings: {
-      players: [],
-      status: "ongoing",
+      status: "opened",
+      type: "basic",
+      createdBy: userId,
+      createdAt: new Date(Date.now()),
     },
   };
 };
 
-export const buildClient = (
-  socket: WebSocket,
-  connectedClients: Set<Client>,
-  gameId: string,
-  userId: string
-) => {
-  const hasConnectedClients = connectedClients.size > 0;
-  const client: Client = {
-    socket,
-    gameId,
-    userId,
-    game: hasConnectedClients
-      ? Array.from(connectedClients)[0].game
-      : buildInitialGame(gameId),
-  };
-  client.game.settings.players = hasConnectedClients
-    ? computePlayers(userId, gameId, connectedClients)
-    : [userId];
-
-  return client;
-};
-
-export const isClientOfCurrentGame = (client: Client, gameId: string) => {
-  return (
-    client.gameId === gameId && client.socket.readyState === WebSocketState.OPEN
-  );
-};
-
-export const broadCastMessageByGame = (
-  clients: Set<Client>,
-  gameId: string,
-  message: string
-) => {
-  clients.forEach((client) => {
-    if (isClientOfCurrentGame(client, gameId)) {
-      client.socket.send(message);
-    }
+export const broadcast = (players: Player[], message: string) => {
+  players.forEach((player) => {
+    player.socket.send(message);
   });
 };
 
-export const removePlayerFromGame = (clients: Set<Client>, userId: string) => {
-  const connectedClient = Array.from(clients)[0];
-  connectedClient.game.settings.players =
-    connectedClient.game.settings.players.filter((id) => userId !== id);
-  return connectedClient.game;
+export function findPlayer(
+  userId: string,
+  players: Player[]
+): Player | undefined {
+  for (const player of players) {
+    if (player.userId === userId) {
+      return player;
+    }
+  }
+  return undefined;
+}
+
+export function cleanPlayer(player: Player): Omit<Player, "socket"> {
+  const { socket, ...rest } = player;
+  return rest;
+}
+
+export function addPlayer(
+  newPlayer: Player | undefined,
+  players: Player[]
+): boolean {
+  if (!newPlayer) return false;
+
+  for (const player of players) {
+    if (player.userId === newPlayer.userId) {
+      return false;
+    }
+  }
+  players.push(newPlayer);
+  return true;
+}
+
+export function findGame(gameId: string, games: Game[]): Game | undefined {
+  for (const game of games) {
+    if (game.gameId === gameId) {
+      return game;
+    }
+  }
+  return undefined;
+}
+
+export const getMaxPlayers = (type: GameType) => {
+  switch (type) {
+    case "basic":
+      return 2;
+    default:
+      return 2;
+  }
 };

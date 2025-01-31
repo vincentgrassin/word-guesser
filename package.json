@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "install-frontend": "pnpm install --filter frontend",
+    "dev-frontend": " pnpm --filter frontend dev",
+    "install-backend": "pnpm install --filter backend",
+    "dev-backend": "pnpm --filter backend dev",
+    "build-shared": "pnpm --filter @word-guesser/shared build"
   },
   "keywords": [],
   "author": "",

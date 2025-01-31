@@ -14,6 +14,9 @@ importers:
       '@fastify/websocket':
         specifier: ^11.0.2
         version: 11.0.2
+      '@word-guesser/shared':
+        specifier: workspace:*
+        version: link:../shared
       fastify:
         specifier: ^5.2.1
         version: 5.2.1
@@ -21,9 +24,6 @@ importers:
       '@types/node':
         specifier: ^22.10.5
         version: 22.10.5
-      '@types/ws':
-        specifier: ^8.5.13
-        version: 8.5.13
       nodemon:
         specifier: ^3.1.9
         version: 3.1.9
@@ -235,9 +235,6 @@ packages:
 
   '@types/node@22.10.5':
     resolution: {integrity: sha512-F8Q+SeGimwOo86fiovQh8qiXfFEh2/ocYv7tU5pJ3EXMSSxk1Joj5wefpFK2fHTf/N6HKGSxIDBT9f3gCxXPkQ==}
-
-  '@types/ws@8.5.13':
-    resolution: {integrity: sha512-osM/gWBTPKgHV8XkTunnegTRIsvF6owmf5w+JtAfOw472dptdm0dlGv4xCt6GwQRcC2XVOvvRE/0bAoQcL2QkA==}
 
   abstract-logging@2.0.1:
     resolution: {integrity: sha512-2BjRTZxTPvheOvGbBslFSYOUkr+SjPtOnrLP33f+VIWLzezQpZcqVg7ja3L4dBXmzzgwT+a029jRx5PCi3JuiA==}
@@ -749,10 +746,6 @@ snapshots:
   '@types/node@22.10.5':
     dependencies:
       undici-types: 6.20.0
-
-  '@types/ws@8.5.13':
-    dependencies:
-      '@types/node': 22.10.5
 
   abstract-logging@2.0.1: {}
 

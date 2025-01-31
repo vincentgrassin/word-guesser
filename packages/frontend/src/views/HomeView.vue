@@ -1,19 +1,29 @@
 <script setup lang="ts">
-import GameManager from '@/components/GameManager.vue'
-import { generateUID } from '@/utils/helpers'
-import { provide, ref } from 'vue'
+import GameItem from '@/components/GameItem.vue'
+import { useGamesStore } from '@/stores/useGamesStore'
+import { generateUID } from '@word-guesser/shared'
+import { onMounted, ref } from 'vue'
 const userName = ref('')
-const uid = generateUID()
-provide('userName', userName)
-provide('userId', uid)
+const uid = localStorage.getItem('userId') || generateUID()
+const { state, connect, createGame, setUserId } = useGamesStore()
+onMounted(() => {
+  connect(uid)
+  if (!state.userId) setUserId(uid)
+})
 </script>
 
 <template>
   <main>
     <h1>Word Guesser</h1>
+    <p>User: {{ state.userId }}</p>
+    <button @:click="() => createGame(state.userId)">Create game</button>
+
     <p>User: {{ userName }}</p>
     <input v-model="userName" className="text-black" />
-    <GameManager id="123" />
-    <GameManager id="456" />
+    <ul>
+      <li v-for="(game, index) in state.games" :key="index">
+        <GameItem :game="game" />
+      </li>
+    </ul>
   </main>
 </template>

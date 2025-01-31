@@ -1,73 +1,91 @@
-import fastify from "fastify";
 import websocketPlugin from "@fastify/websocket";
-import { Client, Message } from "./types.js";
+import { Game, Message, Player, generateUID } from "@word-guesser/shared";
+import fastify from "fastify";
 import {
-  broadCastMessageByGame,
-  buildClient,
-  getClientsByGameId,
-  isClientOfCurrentGame,
-  removePlayerFromGame,
-  updateRounds,
+  broadcast,
+  buildInitialGame,
+  findGame,
+  findPlayer,
+  buildPlayers,
+  buildRounds,
+  getMaxPlayers,
+  buildGameStatus,
 } from "./helpers.js";
 
 const server = fastify();
 
-const clients = new Set<Client>();
+const games: Game[] = [];
+const players: Player[] = [];
 
 console.log("Starting server");
 server.register(websocketPlugin);
 
 server.register(async function (fastify) {
   fastify.get(
-    "/game/:gameId",
+    "/connect/:userId",
     { websocket: true },
     (socket /* WebSocket */, req /* FastifyRequest */) => {
-      const gameId = (req.params as { gameId: string }).gameId;
-      const userId = (req.query as { userId: string }).userId || "";
+      const userId = (req.params as { userId: string }).userId;
+      const newPlayer = {
+        userId,
+        socket,
+      };
 
-      // Add new client with its room ID
-      const connectedClients = getClientsByGameId(gameId, clients);
-      const client = buildClient(socket, connectedClients, gameId, userId);
-      clients.add(client);
-      broadCastMessageByGame(clients, gameId, JSON.stringify(client.game));
+      players.push(newPlayer);
+      newPlayer.socket.send(
+        JSON.stringify({ event: "LIST_GAMES", payload: Array.from(games) })
+      );
 
-      socket.on("message", (message) => {
-        const rawMessage = message.toString();
-        const parsedMessage: Message = JSON.parse(rawMessage);
-        const updatedRounds = updateRounds(client.game.rounds, parsedMessage);
-        clients.forEach((client) => {
-          if (isClientOfCurrentGame(client, gameId)) {
-            client.game.messages.push(parsedMessage);
-            client.game.rounds = updatedRounds;
-            client.socket.send(JSON.stringify(client.game));
-          }
-        });
+      socket.on("message", (m: Buffer) => {
+        const rawMessage = m.toString();
+        const message: Message = JSON.parse(rawMessage);
+        const { event, content, userId, gameId, date } = message;
+
+        switch (event) {
+          case "CREATE_GAME":
+            const uid = generateUID();
+            const newGame = buildInitialGame(uid, userId || "");
+            games.push(newGame);
+            broadcast(players, JSON.stringify({ event, payload: newGame }));
+            break;
+          case "JOIN_GAME":
+            if (userId && gameId) {
+              const player = findPlayer(userId, players);
+              const game = findGame(gameId, games);
+              if (game) {
+                game.players = buildPlayers(game, player);
+                game.settings.status = buildGameStatus(game);
+              }
+              broadcast(players, JSON.stringify({ event, payload: game }));
+            }
+            break;
+          case "PLAY_ROUND":
+            if (userId && gameId) {
+              const game = findGame(gameId, games);
+              if (game) {
+                game.rounds = buildRounds(game, message);
+                game.settings.status = buildGameStatus(game);
+              }
+              broadcast(players, JSON.stringify({ event, payload: game }));
+            }
+            break;
+        }
       });
 
       // Clean up on disconnect
       socket.on("close", () => {
-        console.log(`Client disconnected from room ${gameId}`);
-        clients.delete(client);
-        const connectedClients = getClientsByGameId(gameId, clients);
-        if (connectedClients.size) {
-          const updatedGame = removePlayerFromGame(connectedClients, userId);
-          broadCastMessageByGame(
-            connectedClients,
-            gameId,
-            JSON.stringify(updatedGame)
-          );
-        }
+        //TODO: close games, updates players, update games
       });
 
-      socket.on("error", (error) => {
-        console.error(`Error in room ${gameId}:`, error);
-        clients.delete(client);
+      socket.on("error", (error: Error) => {
+        //TODO: handle errors
       });
     }
   );
 });
 
 server.listen({ port: 3000, host: "0.0.0.0" }, (err, address) => {
+  //TODO: env variables
   if (err) {
     console.error(err);
     process.exit(1);

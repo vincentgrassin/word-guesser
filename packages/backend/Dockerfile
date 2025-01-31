@@ -11,7 +11,6 @@ WORKDIR /app
 
 # Copy the package.json and pnpm-lock.yaml files
 COPY package.json pnpm-lock.yaml ./
-RUN NODE_ENV=development pnpm install 
 
 # Install pnpm globally
 RUN npm install -g pnpm
@@ -19,7 +18,12 @@ RUN npm install -g pnpm
 # Copy the rest of the backend code
 COPY . .
 
+# Build the shared package
+RUN pnpm --filter @word-guesser/shared build
+
+
 # Install dependencies for the backend only
+# RUN NODE_ENV=development pnpm install 
 RUN NODE_ENV=development pnpm install --filter backend
 RUN if [ "$NODE_ENV" != "development" ]; then pnpm build; fi
 RUN if [ "$NODE_ENV" != "development" ]; then pnpm prune --prod; fi
