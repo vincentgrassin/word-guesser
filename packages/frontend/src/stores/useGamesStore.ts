@@ -62,6 +62,15 @@ export const useGamesStore = defineStore('games', () => {
     }
   }
 
+  const message = (message: Omit<Message, 'date'>) => {
+    const { event, content, gameId, userId } = message
+    if (state.socket && state.socket.readyState === WebSocket.OPEN) {
+      state.socket.send(JSON.stringify({ content, userId, date: new Date(), event, gameId }))
+    } else {
+      console.error(`WebSocket is not open for game ${userId}. Cannot send message.`)
+    }
+  }
+
   const createGame = (userId: string) => {
     message({ userId, event: 'CREATE_GAME' })
   }
@@ -74,14 +83,9 @@ export const useGamesStore = defineStore('games', () => {
     message({ gameId, userId, event: 'PLAY_ROUND', content })
   }
 
-  const message = (message: Omit<Message, 'date'>) => {
-    const { event, content, gameId, userId } = message
-    if (state.socket && state.socket.readyState === WebSocket.OPEN) {
-      state.socket.send(JSON.stringify({ content, userId, date: new Date(), event, gameId }))
-    } else {
-      console.error(`WebSocket is not open for game ${userId}. Cannot send message.`)
-    }
-  }
+  // const quitGame = (gameId: string, userId: string, content: string) => {
+  //   message({ gameId, userId, event: 'PLAY_ROUND', content })
+  // }
 
   const disconnect = () => {
     if (state.socket) {

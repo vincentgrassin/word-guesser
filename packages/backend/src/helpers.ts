@@ -28,17 +28,14 @@ export const buildPlayers = (game: Game, player: Player | undefined) => {
 
 export const buildRounds = (game: Game, message: Message) => {
   const rounds = [...game.rounds];
-  const [player1, player2] = game.players;
 
-  if (!player1 || !player2) {
+  if (!game.players) {
     console.error("Invalid player");
     return rounds;
   }
+  const isPlayer = game.players.find((p) => p.userId === message.userId);
 
-  const isPlayer1 = message.userId === player1.userId;
-  const isPlayer2 = message.userId === player2.userId;
-
-  if (!isPlayer1 && !isPlayer2) {
+  if (!isPlayer) {
     console.error("Message sender is not a recognized player in this game");
     return rounds;
   }
@@ -46,26 +43,32 @@ export const buildRounds = (game: Game, message: Message) => {
   if (rounds.length === 0) {
     // No rounds exist, create the first round
     rounds.push({
-      player1: isPlayer1 ? message : undefined,
-      player2: isPlayer2 ? message : undefined,
       roundId: 1,
+      isComplete: false,
+      messages: [message],
     });
   } else {
     const currentRound = rounds[rounds.length - 1];
-
-    if (currentRound.player1 && currentRound.player2) {
-      // Both players have sent messages, start a new round
+    const playersNumber = getMaxPlayers(game.settings.type);
+    if (currentRound.messages.length === playersNumber) {
+      // All players have sent messages, start a new round
       rounds.push({
-        player1: isPlayer1 ? message : undefined,
-        player2: isPlayer2 ? message : undefined,
         roundId: currentRound.roundId + 1,
+        isComplete: false,
+        messages: [message],
       });
     } else {
       // There's an ongoing round, update the appropriate player
-      if (isPlayer1) {
-        currentRound.player1 = message;
-      } else if (isPlayer2) {
-        currentRound.player2 = message;
+      const playerMessageIndex = currentRound.messages.findIndex(
+        (m) => m.userId === message.userId
+      );
+      if (playerMessageIndex === -1) {
+        currentRound.messages.push(message);
+      } else {
+        currentRound.messages[playerMessageIndex] = message;
+      }
+      if (currentRound.messages.length === playersNumber) {
+        currentRound.isComplete = true;
       }
     }
   }
@@ -73,14 +76,15 @@ export const buildRounds = (game: Game, message: Message) => {
 };
 
 export const buildGameStatus = (game: Game): GameStatus => {
+  const playersNumber = getMaxPlayers(game.settings.type);
   let status = game.settings.status;
-  if (game.players.length === getMaxPlayers(game.settings.type)) {
+  if (game.players.length === playersNumber) {
     status = "started";
   }
   const rounds = game.rounds;
   if (rounds.length) {
     const lastRound = game.rounds[game.rounds.length - 1];
-    const hasWin = lastRound.player1?.content === lastRound.player2?.content;
+    const hasWin = areAllMessagesEquals(lastRound.messages, playersNumber);
     return hasWin ? "closed" : status;
   }
   return status;
@@ -155,3 +159,14 @@ export const getMaxPlayers = (type: GameType) => {
       return 2;
   }
 };
+
+export function areAllMessagesEquals(
+  messages: Message[],
+  playersNumber: number
+) {
+  if (messages.length === 0) return false;
+  if (messages.length !== playersNumber) return false;
+
+  const firstMessage = messages[0].content;
+  return messages.every((item) => item.content === firstMessage);
+}

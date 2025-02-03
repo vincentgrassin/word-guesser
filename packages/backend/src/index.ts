@@ -65,8 +65,8 @@ server.register(async function (fastify) {
               if (game) {
                 game.rounds = buildRounds(game, message);
                 game.settings.status = buildGameStatus(game);
+                broadcast(players, JSON.stringify({ event, payload: game }));
               }
-              broadcast(players, JSON.stringify({ event, payload: game }));
             }
             break;
         }

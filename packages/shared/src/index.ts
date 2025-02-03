@@ -23,8 +23,8 @@ export type Message = {
 
 export type Round = {
   roundId: number;
-  player1: Message | undefined;
-  player2: Message | undefined;
+  messages: Message[];
+  isComplete: boolean;
 };
 
 export type GameSettings = {
@@ -57,3 +57,16 @@ export const generateUID = () => {
 export const getGame = (games: Game[], gameId: string) => {
   return games.find((g) => g.gameId === gameId);
 };
+
+export function sortRoundMessages(
+  userId: string,
+  round: Round
+): {
+  me?: Message;
+  others: Message[];
+} {
+  const messages = round.messages;
+  const userMessage = messages.find((msg) => msg.userId === userId);
+  const otherMessages = messages.filter((msg) => msg.userId !== userId);
+  return { me: userMessage, others: otherMessages };
+}
