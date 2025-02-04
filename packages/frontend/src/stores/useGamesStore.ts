@@ -28,7 +28,7 @@ export const useGamesStore = defineStore('games', () => {
       state.socket = new WebSocket(wsUrl)
 
       state.socket.onopen = () => {
-        console.log(`Connected to socket with`, userId)
+        console.info(`[INFO]: Connected to socket with`, userId)
       }
 
       state.socket.onmessage = (e) => {
@@ -41,9 +41,10 @@ export const useGamesStore = defineStore('games', () => {
           case 'CREATE_GAME':
             state.games.push(payload as Game)
             break
-
           case 'JOIN_GAME':
           case 'PLAY_ROUND':
+          case 'CLOSE_CONNECTION':
+          case 'QUIT_GAME':
             const game = payload as Game
             const idx = state.games.findIndex((g) => g.gameId === game.gameId)
             if (idx !== -1) state.games.splice(idx, 1, game)
@@ -53,39 +54,40 @@ export const useGamesStore = defineStore('games', () => {
       }
 
       state.socket.onclose = () => {
-        console.log(`WebSocket connection closed for`, userId)
+        console.info(`[INFO]: WebSocket connection closed for`, userId)
       }
 
       state.socket.onerror = (error) => {
-        console.error(`WebSocket error for ${userId}`, error)
+        console.error(`[ERROR]: WebSocket error for ${userId}`, error)
       }
     }
   }
 
-  const message = (message: Omit<Message, 'date'>) => {
-    const { event, content, gameId, userId } = message
+  const message = (message: Omit<Message, 'date' | 'userId'>) => {
+    const { event, content, gameId } = message
+
     if (state.socket && state.socket.readyState === WebSocket.OPEN) {
-      state.socket.send(JSON.stringify({ content, userId, date: new Date(), event, gameId }))
+      state.socket.send(JSON.stringify({ content, date: new Date(), event, gameId }))
     } else {
-      console.error(`WebSocket is not open for game ${userId}. Cannot send message.`)
+      console.error(`[ERROR]: WebSocket is not open for game ${state.userId}. Cannot send message.`)
     }
   }
 
-  const createGame = (userId: string) => {
-    message({ userId, event: 'CREATE_GAME' })
+  const createGame = () => {
+    message({ event: 'CREATE_GAME' })
   }
 
-  const joinGame = (gameId: string, userId: string) => {
-    message({ gameId, userId, event: 'JOIN_GAME' })
+  const joinGame = (gameId: string) => {
+    message({ gameId, event: 'JOIN_GAME' })
   }
 
-  const playRound = (gameId: string, userId: string, content: string) => {
-    message({ gameId, userId, event: 'PLAY_ROUND', content })
+  const quitGame = (gameId: string) => {
+    message({ gameId, event: 'QUIT_GAME' })
   }
 
-  // const quitGame = (gameId: string, userId: string, content: string) => {
-  //   message({ gameId, userId, event: 'PLAY_ROUND', content })
-  // }
+  const playRound = (gameId: string, content: string) => {
+    message({ gameId, event: 'PLAY_ROUND', content })
+  }
 
   const disconnect = () => {
     if (state.socket) {
@@ -93,5 +95,15 @@ export const useGamesStore = defineStore('games', () => {
     }
   }
 
-  return { connect, message, disconnect, state, createGame, joinGame, setUserId, playRound }
+  return {
+    connect,
+    message,
+    disconnect,
+    state,
+    createGame,
+    joinGame,
+    quitGame,
+    setUserId,
+    playRound,
+  }
 })

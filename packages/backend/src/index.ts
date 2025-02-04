@@ -1,23 +1,29 @@
 import websocketPlugin from "@fastify/websocket";
 import { Game, Message, Player, generateUID } from "@word-guesser/shared";
 import fastify from "fastify";
+import dotenv from "dotenv";
 import {
   broadcast,
   buildInitialGame,
   findGame,
-  findPlayer,
+  findPlayerById,
   buildPlayers,
   buildRounds,
-  getMaxPlayers,
   buildGameStatus,
+  removePlayerFromGame,
+  isPlayerInGame,
+  broadcastToOne,
+  removePlayerFromPlayers,
+  findPlayer,
 } from "./helpers.js";
 
 const server = fastify();
+dotenv.config();
 
 const games: Game[] = [];
-const players: Player[] = [];
+let players: Player[] = [];
 
-console.log("Starting server");
+console.info("[INFO]: Starting server");
 server.register(websocketPlugin);
 
 server.register(async function (fastify) {
@@ -30,33 +36,30 @@ server.register(async function (fastify) {
         userId,
         socket,
       };
-
       players.push(newPlayer);
-      newPlayer.socket.send(
-        JSON.stringify({ event: "LIST_GAMES", payload: Array.from(games) })
-      );
+      broadcastToOne(newPlayer, "LIST_GAMES", games);
 
       socket.on("message", (m: Buffer) => {
         const rawMessage = m.toString();
         const message: Message = JSON.parse(rawMessage);
-        const { event, content, userId, gameId, date } = message;
-
+        message.userId = userId;
+        const { event, gameId } = message;
         switch (event) {
           case "CREATE_GAME":
             const uid = generateUID();
             const newGame = buildInitialGame(uid, userId || "");
             games.push(newGame);
-            broadcast(players, JSON.stringify({ event, payload: newGame }));
+            broadcast(players, event, newGame);
             break;
           case "JOIN_GAME":
             if (userId && gameId) {
-              const player = findPlayer(userId, players);
+              const player = findPlayerById(userId, players);
               const game = findGame(gameId, games);
               if (game) {
                 game.players = buildPlayers(game, player);
                 game.settings.status = buildGameStatus(game);
               }
-              broadcast(players, JSON.stringify({ event, payload: game }));
+              broadcast(players, event, game);
             }
             break;
           case "PLAY_ROUND":
@@ -65,16 +68,40 @@ server.register(async function (fastify) {
               if (game) {
                 game.rounds = buildRounds(game, message);
                 game.settings.status = buildGameStatus(game);
-                broadcast(players, JSON.stringify({ event, payload: game }));
+                broadcast(players, event, game);
               }
             }
+            break;
+          case "QUIT_GAME":
+            const game = findGame(gameId, games);
+            if (game) {
+              removePlayerFromGame(userId, game);
+              broadcast(players, event, game);
+            }
+
             break;
         }
       });
 
       // Clean up on disconnect
       socket.on("close", () => {
-        //TODO: close games, updates players, update games
+        const disconnectedPlayer = findPlayer(socket, players);
+
+        if (!disconnectedPlayer) return;
+        removePlayerFromPlayers(disconnectedPlayer, players);
+        const remainingConnections = findPlayerById(
+          disconnectedPlayer.userId,
+          players
+        );
+        if (!remainingConnections) {
+          games.forEach((game) => {
+            const isInGame = isPlayerInGame(disconnectedPlayer.userId, game);
+            if (isInGame) {
+              removePlayerFromGame(disconnectedPlayer.userId, game);
+              broadcast(players, "CLOSE_CONNECTION", game);
+            }
+          });
+        }
       });
 
       socket.on("error", (error: Error) => {
@@ -84,11 +111,13 @@ server.register(async function (fastify) {
   );
 });
 
-server.listen({ port: 3000, host: "0.0.0.0" }, (err, address) => {
-  //TODO: env variables
-  if (err) {
-    console.error(err);
-    process.exit(1);
+server.listen(
+  { port: parseInt(process.env.PORT!), host: process.env.HOST },
+  (err, address) => {
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
+    console.info(`[INFO]: Server listening at ${address}`);
   }
-  console.log(`Server listening at ${address}`);
-});
+);

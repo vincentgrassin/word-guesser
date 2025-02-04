@@ -4,11 +4,11 @@ import type { GameStatus } from '@word-guesser/shared'
 import { ref } from 'vue'
 const { gameId, gameStatus } = defineProps<{ gameId: string; gameStatus: GameStatus }>()
 
-const { playRound, state } = useGamesStore()
+const { playRound } = useGamesStore()
 
 const bet = ref('')
 const handleSubmit = () => {
-  playRound(gameId, state.userId, bet.value)
+  playRound(gameId, bet.value)
 }
 </script>
 

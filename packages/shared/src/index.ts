@@ -7,6 +7,7 @@ export type Player = {
   socket: WsWebSocket;
   userId: string;
 };
+export type PlainPlayer = Omit<Player, "socket">;
 
 export type MessageResponse = {
   event: SocketEvent;
@@ -38,7 +39,7 @@ export type Game = {
   gameId: string;
   settings: GameSettings;
   rounds: Round[];
-  players: Omit<Player, "socket">[];
+  players: PlainPlayer[];
 };
 
 export type SocketEvent =
@@ -46,7 +47,9 @@ export type SocketEvent =
   | "DISCONNECT_PLAYER"
   | "PLAY_ROUND"
   | "LIST_GAMES"
-  | "JOIN_GAME";
+  | "CLOSE_CONNECTION"
+  | "JOIN_GAME"
+  | "QUIT_GAME";
 
 export type WebSocket = WsWebSocket;
 

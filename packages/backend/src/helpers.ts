@@ -3,8 +3,10 @@ import {
   GameStatus,
   GameType,
   Message,
+  PlainPlayer,
   Player,
-  Round,
+  SocketEvent,
+  WebSocket,
 } from "@word-guesser/shared";
 
 export const WebSocketState = {
@@ -104,13 +106,25 @@ export const buildInitialGame = (gameId: string, userId: string): Game => {
   };
 };
 
-export const broadcast = (players: Player[], message: string) => {
+export const broadcastToOne = (
+  player: Player,
+  event: SocketEvent,
+  payload: unknown
+) => {
+  player.socket.send(JSON.stringify({ event, payload }));
+};
+
+export const broadcast = (
+  players: Player[],
+  event: SocketEvent,
+  payload: unknown
+) => {
   players.forEach((player) => {
-    player.socket.send(message);
+    broadcastToOne(player, event, payload);
   });
 };
 
-export function findPlayer(
+export function findPlayerById(
   userId: string,
   players: Player[]
 ): Player | undefined {
@@ -122,27 +136,51 @@ export function findPlayer(
   return undefined;
 }
 
-export function cleanPlayer(player: Player): Omit<Player, "socket"> {
+export function findPlayer(
+  socket: WebSocket,
+  players: Player[]
+): Player | undefined {
+  return players.find((p) => p.socket === socket);
+}
+
+export function cleanPlayer(player: Player): PlainPlayer {
   const { socket, ...rest } = player;
   return rest;
 }
 
-export function addPlayer(
-  newPlayer: Player | undefined,
-  players: Player[]
-): boolean {
-  if (!newPlayer) return false;
-
-  for (const player of players) {
-    if (player.userId === newPlayer.userId) {
-      return false;
-    }
+export function removePlayerFromGame(userId: string, game: Game): boolean {
+  const players = game.players;
+  if (!userId) return false;
+  const index = players.findIndex((p) => p.userId === userId);
+  if (index !== -1) {
+    players.splice(index, 1);
   }
-  players.push(newPlayer);
   return true;
 }
 
-export function findGame(gameId: string, games: Game[]): Game | undefined {
+export function removePlayerFromPlayers(
+  player: Player,
+  players: Player[]
+): boolean {
+  if (!player) return false;
+
+  const index = players.findIndex((p) => p.socket === player.socket);
+  if (index !== -1) {
+    players.splice(index, 1);
+  }
+
+  return true;
+}
+
+export function isPlayerInGame(userId: string, game: Game): boolean {
+  return game.players.some((p) => p.userId === userId);
+}
+
+export function findGame(
+  gameId: string | undefined,
+  games: Game[]
+): Game | undefined {
+  if (!gameId) return undefined;
   for (const game of games) {
     if (game.gameId === gameId) {
       return game;

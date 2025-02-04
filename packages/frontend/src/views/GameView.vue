@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ActionsArea from '@/components/ActionsArea.vue'
 import BetFormArea from '@/components/BetFormArea.vue'
 import RoundsArea from '@/components/RoundsArea.vue'
 import SettingsArea from '@/components/SettingsArea.vue'
@@ -18,7 +19,7 @@ onMounted(() => {
     setUserId(savedUserId)
   }
 
-  joinGame(route.params.id as string, state.userId)
+  joinGame(route.params.id as string)
 })
 </script>
 
@@ -28,7 +29,9 @@ onMounted(() => {
       <h1>Game {{ id }}</h1>
       <p>User: {{ state.userId }}</p>
     </div>
+    {{ game }}
     <div v-if="!!game">
+      <ActionsArea :gameId="id" />
       <SettingsArea :game="game" />
       <RoundsArea :rounds="game.rounds" />
       <BetFormArea :gameId="id" :gameStatus="game.settings.status" />

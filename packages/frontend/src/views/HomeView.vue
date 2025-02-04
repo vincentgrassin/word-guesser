@@ -16,7 +16,7 @@ onMounted(() => {
   <main>
     <h1>Word Guesser</h1>
     <p>User: {{ state.userId }}</p>
-    <button @:click="() => createGame(state.userId)">Create game</button>
+    <button @:click="() => createGame()">Create game</button>
 
     <p>User: {{ userName }}</p>
     <input v-model="userName" className="text-black" />
