@@ -2,9 +2,9 @@ import {
   Game,
   GameStatus,
   GameType,
-  Message,
   PlainPlayer,
   Player,
+  ResponseMessage,
   SocketEvent,
   WebSocket,
 } from "@word-guesser/shared";
@@ -28,7 +28,7 @@ export const buildPlayers = (game: Game, player: Player | undefined) => {
   return [...players, cleanedPlayer];
 };
 
-export const buildRounds = (game: Game, message: Message) => {
+export const buildRounds = (game: Game, message: ResponseMessage) => {
   const rounds = [...game.rounds];
 
   if (!game.players) {
@@ -199,7 +199,7 @@ export const getMaxPlayers = (type: GameType) => {
 };
 
 export function areAllMessagesEquals(
-  messages: Message[],
+  messages: ResponseMessage[],
   playersNumber: number
 ) {
   if (messages.length === 0) return false;

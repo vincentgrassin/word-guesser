@@ -14,17 +14,18 @@ export type MessageResponse = {
   payload: unknown;
 };
 
-export type Message = {
-  userId?: string;
+export type RequestMessage = {
   gameId?: string;
   content?: string;
-  date: Date;
   event: SocketEvent;
+  date: Date;
 };
+
+export type ResponseMessage = RequestMessage & { userId: string };
 
 export type Round = {
   roundId: number;
-  messages: Message[];
+  messages: ResponseMessage[];
   isComplete: boolean;
 };
 
@@ -65,8 +66,8 @@ export function sortRoundMessages(
   userId: string,
   round: Round
 ): {
-  me?: Message;
-  others: Message[];
+  me?: ResponseMessage;
+  others: ResponseMessage[];
 } {
   const messages = round.messages;
   const userMessage = messages.find((msg) => msg.userId === userId);
