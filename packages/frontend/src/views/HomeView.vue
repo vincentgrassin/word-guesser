@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DsButton from '@/components/DsButton.vue'
 import GameItem from '@/components/GameItem.vue'
 import { useGamesStore } from '@/stores/useGamesStore'
 import { generateUID } from '@word-guesser/shared'
@@ -16,8 +17,7 @@ onMounted(() => {
   <main>
     <h1>Word Guesser</h1>
     <p>User: {{ state.userId }}</p>
-    <button @:click="() => createGame()">Create game</button>
-
+    <DsButton @:click="() => createGame()">Create game</DsButton>
     <p>User: {{ userName }}</p>
     <input v-model="userName" className="text-black" />
     <ul>

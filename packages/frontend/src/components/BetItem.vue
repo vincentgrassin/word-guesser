@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { type Message } from '@word-guesser/shared'
+import { type ResponseMessage } from '@word-guesser/shared'
 
 defineProps<{
   isMe: boolean
-  bet: Message | undefined
+  bet: ResponseMessage | undefined
   isRevealed: boolean
 }>()
 </script>

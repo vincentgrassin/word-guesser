@@ -9,7 +9,7 @@ export type Player = {
 };
 export type PlainPlayer = Omit<Player, "socket">;
 
-export type MessageResponse = {
+export type SocketPayload = {
   event: SocketEvent;
   payload: unknown;
 };
@@ -50,16 +50,13 @@ export type SocketEvent =
   | "LIST_GAMES"
   | "CLOSE_CONNECTION"
   | "JOIN_GAME"
+  | "DELETE_GAME"
   | "QUIT_GAME";
 
 export type WebSocket = WsWebSocket;
 
 export const generateUID = () => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-};
-
-export const getGame = (games: Game[], gameId: string) => {
-  return games.find((g) => g.gameId === gameId);
 };
 
 export function sortRoundMessages(
@@ -73,4 +70,32 @@ export function sortRoundMessages(
   const userMessage = messages.find((msg) => msg.userId === userId);
   const otherMessages = messages.filter((msg) => msg.userId !== userId);
   return { me: userMessage, others: otherMessages };
+}
+
+export function findGame(
+  gameId: string | undefined,
+  games: Game[]
+): Game | undefined {
+  if (!gameId) return undefined;
+  for (const game of games) {
+    if (game.gameId === gameId) {
+      return game;
+    }
+  }
+  return undefined;
+}
+
+export function removeGame(gameId: string, games: Game[]): string | false {
+  const index = games.findIndex((g) => g.gameId === gameId);
+  if (index !== -1) {
+    games.splice(index, 1);
+    return gameId;
+  }
+  return false;
+}
+
+export function syncGame(game: Game, games: Game[]) {
+  const idx = games.findIndex((g) => g.gameId === game.gameId);
+  if (idx !== -1) games.splice(idx, 1, game);
+  else games.push(game);
 }

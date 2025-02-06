@@ -1,4 +1,10 @@
-import type { Game, Message, MessageResponse } from '@word-guesser/shared'
+import {
+  type Game,
+  type SocketPayload,
+  type RequestMessage,
+  removeGame,
+  syncGame,
+} from '@word-guesser/shared'
 import { defineStore } from 'pinia'
 import { reactive } from 'vue'
 
@@ -32,24 +38,25 @@ export const useGamesStore = defineStore('games', () => {
       }
 
       state.socket.onmessage = (e) => {
-        const { event, payload }: MessageResponse = JSON.parse(e.data)
+        const { event, payload }: SocketPayload = JSON.parse(e.data)
         switch (event) {
           case 'LIST_GAMES': {
             state.games = payload as Game[]
             break
           }
           case 'CREATE_GAME':
-            state.games.push(payload as Game)
-            break
           case 'JOIN_GAME':
           case 'PLAY_ROUND':
           case 'CLOSE_CONNECTION':
           case 'QUIT_GAME':
             const game = payload as Game
-            const idx = state.games.findIndex((g) => g.gameId === game.gameId)
-            if (idx !== -1) state.games.splice(idx, 1, game)
-            else state.games.push(game)
+            syncGame(game, state.games)
             break
+          case 'DELETE_GAME':
+            const gameId = payload as string | false
+            if (gameId) {
+              removeGame(gameId, state.games)
+            }
         }
       }
 
@@ -63,7 +70,7 @@ export const useGamesStore = defineStore('games', () => {
     }
   }
 
-  const message = (message: Omit<Message, 'date' | 'userId'>) => {
+  const message = (message: Omit<RequestMessage, 'date'>) => {
     const { event, content, gameId } = message
 
     if (state.socket && state.socket.readyState === WebSocket.OPEN) {
@@ -79,6 +86,10 @@ export const useGamesStore = defineStore('games', () => {
 
   const joinGame = (gameId: string) => {
     message({ gameId, event: 'JOIN_GAME' })
+  }
+
+  const deleteGameRequest = (gameId: string) => {
+    message({ gameId, event: 'DELETE_GAME' })
   }
 
   const quitGame = (gameId: string) => {
@@ -103,6 +114,7 @@ export const useGamesStore = defineStore('games', () => {
     createGame,
     joinGame,
     quitGame,
+    deleteGameRequest,
     setUserId,
     playRound,
   }

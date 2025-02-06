@@ -176,19 +176,6 @@ export function isPlayerInGame(userId: string, game: Game): boolean {
   return game.players.some((p) => p.userId === userId);
 }
 
-export function findGame(
-  gameId: string | undefined,
-  games: Game[]
-): Game | undefined {
-  if (!gameId) return undefined;
-  for (const game of games) {
-    if (game.gameId === gameId) {
-      return game;
-    }
-  }
-  return undefined;
-}
-
 export const getMaxPlayers = (type: GameType) => {
   switch (type) {
     case "basic":

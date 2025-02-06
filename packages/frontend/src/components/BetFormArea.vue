@@ -2,6 +2,7 @@
 import { useGamesStore } from '@/stores/useGamesStore'
 import type { GameStatus } from '@word-guesser/shared'
 import { ref } from 'vue'
+import DsButton from '@/components/DsButton.vue'
 const { gameId, gameStatus } = defineProps<{ gameId: string; gameStatus: GameStatus }>()
 
 const { playRound } = useGamesStore()
@@ -22,12 +23,7 @@ const handleSubmit = () => {
       class="border p-2 w-full rounded text-black"
       placeholder="Type here..."
     />
-    <button
-      type="submit"
-      class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-    >
-      Submit
-    </button>
+    <DsButton type="submit"> Submit </DsButton>
   </form>
   <div v-else>
     <p>Game is closed</p>

@@ -4,6 +4,8 @@ import {
   Player,
   RequestMessage,
   generateUID,
+  removeGame,
+  findGame,
 } from "@word-guesser/shared";
 import dotenv from "dotenv";
 import fastify from "fastify";
@@ -14,7 +16,6 @@ import {
   buildInitialGame,
   buildPlayers,
   buildRounds,
-  findGame,
   findPlayer,
   findPlayerById,
   isPlayerInGame,
@@ -81,12 +82,17 @@ server.register(async function (fastify) {
             }
             break;
           case "QUIT_GAME":
-            const game = findGame(gameId, games);
-            if (game) {
-              removePlayerFromGame(userId, game);
-              broadcast(players, event, game);
+            const gameToQuit = findGame(gameId, games);
+            if (gameToQuit) {
+              removePlayerFromGame(userId, gameToQuit);
+              broadcast(players, event, gameToQuit);
             }
-
+            break;
+          case "DELETE_GAME":
+            if (gameId) {
+              const deletedGameId = removeGame(gameId, games);
+              broadcast(players, event, deletedGameId);
+            }
             break;
         }
       });

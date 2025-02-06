@@ -3,7 +3,7 @@ import { computed, defineProps, type AnchorHTMLAttributes, type ButtonHTMLAttrib
 
 const props = defineProps<
   {
-    as?: 'button' | 'a' // Define the element type
+    as?: 'button' | 'a'
     variant?: 'primary' | 'secondary' | 'danger'
   } & /** @vue-ignore */ (AnchorHTMLAttributes | ButtonHTMLAttributes)
 >()
@@ -13,8 +13,6 @@ const variantClasses = computed(() => {
   switch (props.variant) {
     case 'secondary':
       return 'bg-gray-500 text-white hover:bg-gray-600'
-    case 'danger':
-      return 'bg-red-500 text-white hover:bg-red-600'
     case 'primary':
     default:
       return 'bg-blue-500 text-white hover:bg-blue-600'
