@@ -2,10 +2,10 @@ import websocketPlugin from "@fastify/websocket";
 import {
   Game,
   Player,
-  RequestMessage,
   generateUID,
   removeGame,
   findGame,
+  hasPlayerLeftGame,
 } from "@word-guesser/shared";
 import dotenv from "dotenv";
 import fastify from "fastify";
@@ -19,6 +19,7 @@ import {
   findPlayer,
   findPlayerById,
   isPlayerInGame,
+  parseMessage,
   removePlayerFromGame,
   removePlayerFromPlayers,
 } from "./helpers.js";
@@ -46,8 +47,7 @@ server.register(async function (fastify) {
       broadcastToOne(newPlayer, "LIST_GAMES", games);
 
       socket.on("message", (m: Buffer) => {
-        const rawMessage = m.toString();
-        const message: RequestMessage = JSON.parse(rawMessage);
+        const message = parseMessage(m);
         const { event, gameId } = message;
         switch (event) {
           case "CREATE_GAME":
@@ -102,16 +102,20 @@ server.register(async function (fastify) {
         const disconnectedPlayer = findPlayer(socket, players);
 
         if (!disconnectedPlayer) return;
+        const disconnectedUserId = disconnectedPlayer.userId;
         removePlayerFromPlayers(disconnectedPlayer, players);
         const remainingConnections = findPlayerById(
-          disconnectedPlayer.userId,
+          disconnectedUserId,
           players
         );
         if (!remainingConnections) {
           games.forEach((game) => {
-            const isInGame = isPlayerInGame(disconnectedPlayer.userId, game);
+            const isInGame = isPlayerInGame(disconnectedUserId, game);
             if (isInGame) {
-              removePlayerFromGame(disconnectedPlayer.userId, game);
+              const hasLeftGame = hasPlayerLeftGame(disconnectedUserId, game);
+              if (hasLeftGame) {
+                removePlayerFromGame(disconnectedUserId, game);
+              }
               broadcast(players, "CLOSE_CONNECTION", game);
             }
           });

@@ -4,6 +4,7 @@ import {
   GameType,
   PlainPlayer,
   Player,
+  RequestMessage,
   ResponseMessage,
   SocketEvent,
   WebSocket,
@@ -15,6 +16,18 @@ export const WebSocketState = {
   CLOSING: 2,
   CLOSED: 3,
 } as const;
+
+export const parseMessage = (m: Buffer): RequestMessage => {
+  const rawMessage = m.toString();
+
+  return JSON.parse(rawMessage, (key, value) => {
+    if (key === "date" && typeof value === "string") {
+      const parsedDate = new Date(value);
+      return isNaN(parsedDate.getTime()) ? value : parsedDate;
+    }
+    return value;
+  });
+};
 
 export const buildPlayers = (game: Game, player: Player | undefined) => {
   const players = game.players;

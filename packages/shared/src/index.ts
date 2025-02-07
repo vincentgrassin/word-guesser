@@ -99,3 +99,17 @@ export function syncGame(game: Game, games: Game[]) {
   if (idx !== -1) games.splice(idx, 1, game);
   else games.push(game);
 }
+
+export const isOlderThan = (
+  date: Date | undefined,
+  minutes: number
+): boolean => {
+  if (!date) return false;
+  return Date.now() - date.getTime() > 60 * 1000 * minutes;
+};
+
+export const hasPlayerLeftGame = (playerId: string, game: Game) => {
+  const lastRound = game.rounds[game.rounds.length - 1];
+  const lastMessage = lastRound.messages?.find((m) => m.userId === playerId);
+  return isOlderThan(lastMessage?.date, 5);
+};
