@@ -1,22 +1,23 @@
 <script lang="ts" setup>
-import type { Game } from '@word-guesser/shared'
+import DsButton from '@/components/ui/DsButton.vue'
+import DsModal from '@/components/ui/DsModal.vue'
+import { ref } from 'vue'
+import GameCreationForm from './GameCreationForm.vue'
 
-const { game } = defineProps<{
-  game: Game
-}>()
+const isModalOpen = ref(false)
+const setModal = (value: boolean) => {
+  isModalOpen.value = value
+}
+const userName = ref('')
 </script>
 
 <template>
-  <div class="p-4 border rounded">
-    <h2>Settings</h2>
-    {{ game?.settings }}
-  </div>
-  <div class="p-4 border rounded">
-    <h2>Players</h2>
-    <ul>
-      <li v-for="(player, index) in game?.players" :key="index">
-        {{ player }}
-      </li>
-    </ul>
+  <DsModal :isOpen="isModalOpen" :close="() => setModal(false)">
+    <GameCreationForm />
+  </DsModal>
+  <div>
+    <DsButton @:click="() => setModal(true)">Create game</DsButton>
+    <p>User: {{ userName }}</p>
+    <input v-model="userName" className="text-black" />
   </div>
 </template>

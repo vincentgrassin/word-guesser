@@ -2,7 +2,7 @@
 import ActionsArea from '@/components/ActionsArea.vue'
 import BetFormArea from '@/components/BetFormArea.vue'
 import RoundsArea from '@/components/RoundsArea.vue'
-import SettingsArea from '@/components/SettingsArea.vue'
+import GameSettingsArea from '@/components/GameSettingsArea.vue'
 import { useGamesStore } from '@/stores/useGamesStore'
 import { findGame } from '@word-guesser/shared'
 import { computed, onMounted } from 'vue'
@@ -28,8 +28,8 @@ onMounted(() => {
     <ActionsArea :gameId="id" />
     <h1>Game {{ id }}</h1>
     <p>User: {{ state.userId }}</p>
-    <SettingsArea :game="game" />
-    <RoundsArea :rounds="game.rounds" />
+    <GameSettingsArea :game="game" />
+    <RoundsArea :rounds="[...game.rounds].reverse()" />
     <BetFormArea :gameId="id" :gameStatus="game.settings.status" />
   </main>
 </template>

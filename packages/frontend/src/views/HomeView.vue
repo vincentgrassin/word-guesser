@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import DsButton from '@/components/DsButton.vue'
 import GameItem from '@/components/GameItem.vue'
+import SettingsArea from '@/components/SettingsArea.vue'
 import { useGamesStore } from '@/stores/useGamesStore'
 import { generateUID } from '@word-guesser/shared'
-import { onMounted, ref } from 'vue'
-const userName = ref('')
+import { onMounted } from 'vue'
 const uid = localStorage.getItem('userId') || generateUID()
-const { state, connect, createGame, setUserId } = useGamesStore()
+const { state, connect, setUserId } = useGamesStore()
 onMounted(() => {
   connect(uid)
   if (!state.userId) setUserId(uid)
@@ -17,9 +16,7 @@ onMounted(() => {
   <main>
     <h1>Word Guesser</h1>
     <p>User: {{ state.userId }}</p>
-    <DsButton @:click="() => createGame()">Create game</DsButton>
-    <p>User: {{ userName }}</p>
-    <input v-model="userName" className="text-black" />
+    <SettingsArea />
     <ul>
       <li v-for="(game, index) in state.games" :key="index">
         <GameItem :game="game" />

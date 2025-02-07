@@ -8,7 +8,7 @@ const { rounds } = defineProps<{
 </script>
 
 <template>
-  <div class="p-4 border rounded">
+  <div class="rounded border p-4">
     <h2>Rounds</h2>
     <ul v-if="rounds?.length">
       <li v-for="(round, index) in rounds" :key="index">

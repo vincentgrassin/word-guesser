@@ -2,7 +2,7 @@
 import { useGamesStore } from '@/stores/useGamesStore'
 import type { GameStatus } from '@word-guesser/shared'
 import { ref } from 'vue'
-import DsButton from '@/components/DsButton.vue'
+import DsButton from '@/components/ui/DsButton.vue'
 const { gameId, gameStatus } = defineProps<{ gameId: string; gameStatus: GameStatus }>()
 
 const { playRound } = useGamesStore()
@@ -10,17 +10,18 @@ const { playRound } = useGamesStore()
 const bet = ref('')
 const handleSubmit = () => {
   playRound(gameId, bet.value)
+  bet.value = ''
 }
 </script>
 
 <template>
-  <form v-if="!(gameStatus === 'closed')" @submit.prevent="handleSubmit" class="p-4 border rounded">
-    <label for="roundField" class="block mb-2">Enter something:</label>
+  <form v-if="!(gameStatus === 'closed')" @submit.prevent="handleSubmit" class="rounded border p-4">
+    <label for="roundField" class="mb-2 block">Enter something:</label>
     <input
       id="roundField"
       v-model="bet"
       type="text"
-      class="border p-2 w-full rounded text-black"
+      class="w-full rounded border p-2 text-black"
       placeholder="Type here..."
     />
     <DsButton type="submit"> Submit </DsButton>

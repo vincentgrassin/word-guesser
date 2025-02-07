@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useGamesStore } from '@/stores/useGamesStore'
-import DsButton from './DsButton.vue'
+import DsButton from './ui/DsButton.vue'
 import { RouterLink } from 'vue-router'
 
 defineProps<{ gameId: string }>()
