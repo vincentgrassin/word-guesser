@@ -6,6 +6,7 @@ import {
   removeGame,
   findGame,
   hasPlayerLeftGame,
+  GameProperties,
 } from '@word-guesser/shared'
 import dotenv from 'dotenv'
 import fastify from 'fastify'
@@ -48,11 +49,12 @@ server.register(async function (fastify) {
 
       socket.on('message', (m: Buffer) => {
         const message = parseMessage(m)
-        const { event, gameId } = message
+        const { event, gameId, content } = message
         switch (event) {
           case 'CREATE_GAME':
             const uid = generateUID()
-            const newGame = buildInitialGame(uid, userId || '')
+
+            const newGame = buildInitialGame(uid, userId || '', message.content)
             games.push(newGame)
             broadcast(players, event, newGame)
             break

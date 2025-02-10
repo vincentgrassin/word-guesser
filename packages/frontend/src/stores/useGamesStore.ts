@@ -1,9 +1,10 @@
 import {
-  type Game,
-  type SocketPayload,
-  type RequestMessage,
   removeGame,
   syncGame,
+  type Game,
+  type GameProperties,
+  type RequestMessage,
+  type SocketPayload,
 } from '@word-guesser/shared'
 import { defineStore } from 'pinia'
 import { reactive } from 'vue'
@@ -80,8 +81,8 @@ export const useGamesStore = defineStore('games', () => {
     }
   }
 
-  const createGame = () => {
-    message({ event: 'CREATE_GAME' })
+  const createGame = (gameProperties: GameProperties) => {
+    message({ event: 'CREATE_GAME', content: JSON.stringify(gameProperties) })
   }
 
   const joinGame = (gameId: string) => {

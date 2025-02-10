@@ -3,12 +3,17 @@ import { reactive } from 'vue'
 import BaseButton from './ui/BaseButton.vue'
 import BaseInputText from './ui/BaseInputText.vue'
 
+const { onSubmit: onSubmitProp } = defineProps<{
+  onSubmit: () => void
+}>()
+
 const form = reactive({
   username: '',
 })
 
 const submitForm = () => {
   console.log(form)
+  onSubmitProp()
 }
 </script>
 

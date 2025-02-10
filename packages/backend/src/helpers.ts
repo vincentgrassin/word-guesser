@@ -1,5 +1,6 @@
 import {
   Game,
+  GameProperties,
   GameStatus,
   GameType,
   PlainPlayer,
@@ -103,16 +104,24 @@ export const buildGameStatus = (game: Game): GameStatus => {
   return status
 }
 
-export const buildInitialGame = (gameId: string, userId: string): Game => {
+export const buildInitialGame = (
+  gameId: string,
+  userId: string,
+  rawProperties: string | undefined,
+): Game => {
+  const gameProperties: GameProperties = rawProperties
+    ? JSON.parse(rawProperties)
+    : { type: 'basic', maxPlayers: 2, duration: 2 }
+
   return {
     gameId,
     rounds: [],
     players: [],
     settings: {
       status: 'opened',
-      type: 'basic',
       createdBy: userId,
       createdAt: new Date(Date.now()),
+      ...gameProperties,
     },
   }
 }

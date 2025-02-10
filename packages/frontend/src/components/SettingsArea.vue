@@ -18,10 +18,10 @@ const setUserModal = (value: boolean) => {
 
 <template>
   <BaseModal :isOpen="isModalOpen" :close="() => setModal(false)">
-    <GameCreationForm />
+    <GameCreationForm :onSubmit="() => setModal(false)" />
   </BaseModal>
   <BaseModal :isOpen="isUserModalOpen" :close="() => setUserModal(false)">
-    <UserSettingsForm />
+    <UserSettingsForm :onSubmit="() => setUserModal(false)" />
   </BaseModal>
   <div>
     <BaseButton @:click="() => setModal(true)">Create game</BaseButton>

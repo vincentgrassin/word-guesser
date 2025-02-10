@@ -1,11 +1,12 @@
 import { WebSocket as WsWebSocket } from 'ws'
 
 export type GameStatus = 'opened' | 'started' | 'closed'
-export type GameType = 'basic'
+export type GameType = 'basic' | 'solo'
 
 export type Player = {
   socket: WsWebSocket
   userId: string
+  // userName: string
 }
 export type PlainPlayer = Omit<Player, 'socket'>
 
@@ -29,12 +30,18 @@ export type Round = {
   isComplete: boolean
 }
 
+export type GameProperties = {
+  type: GameType
+  maxPlayers: number
+  duration: number
+}
+
 export type GameSettings = {
   status: GameStatus
   createdBy: string
   createdAt: Date
-  type: GameType
-}
+  startedAt?: Date
+} & GameProperties
 
 export type Game = {
   gameId: string
