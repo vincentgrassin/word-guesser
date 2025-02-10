@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useGamesStore } from '@/stores/useGamesStore'
-import DsButton from './ui/DsButton.vue'
+import BaseButton from './ui/BaseButton.vue'
 import { RouterLink } from 'vue-router'
 
 defineProps<{ gameId: string }>()
@@ -10,10 +10,10 @@ const { quitGame, deleteGameRequest } = useGamesStore()
 <template>
   <div class="flex justify-end">
     <RouterLink :to="`/`">
-      <DsButton @:click="() => quitGame(gameId)">Quit</DsButton>
+      <BaseButton @:click="() => quitGame(gameId)">Quit</BaseButton>
     </RouterLink>
     <RouterLink :to="`/`">
-      <DsButton @:click="() => deleteGameRequest(gameId)">Delete</DsButton>
+      <BaseButton @:click="() => deleteGameRequest(gameId)">Delete</BaseButton>
     </RouterLink>
   </div>
 </template>

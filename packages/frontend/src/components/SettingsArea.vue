@@ -1,23 +1,30 @@
 <script lang="ts" setup>
-import DsButton from '@/components/ui/DsButton.vue'
-import DsModal from '@/components/ui/DsModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import { ref } from 'vue'
 import GameCreationForm from './GameCreationForm.vue'
+import UserSettingsForm from './UserSettingsForm.vue'
 
 const isModalOpen = ref(false)
 const setModal = (value: boolean) => {
   isModalOpen.value = value
 }
-const userName = ref('')
+
+const isUserModalOpen = ref(false)
+const setUserModal = (value: boolean) => {
+  isUserModalOpen.value = value
+}
 </script>
 
 <template>
-  <DsModal :isOpen="isModalOpen" :close="() => setModal(false)">
+  <BaseModal :isOpen="isModalOpen" :close="() => setModal(false)">
     <GameCreationForm />
-  </DsModal>
+  </BaseModal>
+  <BaseModal :isOpen="isUserModalOpen" :close="() => setUserModal(false)">
+    <UserSettingsForm />
+  </BaseModal>
   <div>
-    <DsButton @:click="() => setModal(true)">Create game</DsButton>
-    <p>User: {{ userName }}</p>
-    <input v-model="userName" className="text-black" />
+    <BaseButton @:click="() => setModal(true)">Create game</BaseButton>
+    <BaseButton @:click="() => setUserModal(true)">User settings</BaseButton>
   </div>
 </template>

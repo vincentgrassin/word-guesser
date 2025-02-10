@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 
-const { isOpen } = defineProps<{
+const { isOpen, close } = defineProps<{
   isOpen: boolean
   close?: () => void
 }>()
@@ -12,6 +12,10 @@ const lastFocusableElement = ref<HTMLElement | null>(null)
 
 // Trap focus inside the modal
 const trapFocus = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && close) {
+    close()
+  }
+
   if (e.key === 'Tab') {
     if (e.shiftKey) {
       // Shift + Tab - focus backwards
@@ -68,7 +72,7 @@ onBeforeUnmount(() => {
     tabindex="-1"
     ref="modal"
   >
-    <div class="relative w-96 max-w-full rounded-lg bg-white p-4">
+    <div class="bg-backgroundMute relative w-96 max-w-full rounded-lg p-4">
       <button class="absolute right-2 top-2 text-xl" aria-label="Close modal" @click="close">
         &times;
       </button>
