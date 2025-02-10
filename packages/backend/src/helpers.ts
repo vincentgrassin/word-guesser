@@ -30,19 +30,18 @@ export const parseMessage = (m: Buffer): RequestMessage => {
   })
 }
 
-export const buildPlayers = (game: Game, player: Player | undefined) => {
-  const players = game.players
-  if (!player) return players
-  if (players.length === getMaxPlayers(game.settings.type)) return players
+export const updatePlayers = (game: Game, player: Player | undefined) => {
+  if (!player) return
+  if (game.players.length === getMaxPlayers(game.settings.type)) return
 
-  const hasAlreadyPlayer = players.some((p) => p.userId === player?.userId)
-  if (hasAlreadyPlayer) return players
+  const hasAlreadyPlayer = game.players.some((p) => p.userId === player.userId)
+  if (hasAlreadyPlayer) return
 
   const cleanedPlayer = cleanPlayer(player)
-  return [...players, cleanedPlayer]
+  game.players.push(cleanedPlayer)
 }
 
-export const buildRounds = (game: Game, message: ResponseMessage) => {
+export const updateRounds = (game: Game, message: ResponseMessage) => {
   const rounds = [...game.rounds]
 
   if (!game.players) {
@@ -86,22 +85,27 @@ export const buildRounds = (game: Game, message: ResponseMessage) => {
       }
     }
   }
-  return rounds
+  game.rounds = rounds
 }
 
-export const buildGameStatus = (game: Game): GameStatus => {
+export const updateGameStatus = (game: Game) => {
   const playersNumber = getMaxPlayers(game.settings.type)
-  let status = game.settings.status
+
   if (game.players.length === playersNumber) {
-    status = 'started'
+    game.settings.status = 'started'
   }
-  const rounds = game.rounds
-  if (rounds.length) {
+
+  if (game.rounds.length) {
     const lastRound = game.rounds[game.rounds.length - 1]
     const hasWin = areAllMessagesEquals(lastRound.messages, playersNumber)
-    return hasWin ? 'closed' : status
+    game.settings.status = hasWin ? 'closed' : game.settings.status
   }
-  return status
+}
+
+export const updateGameStartTime = (game: Game) => {
+  if (game.rounds.length && game.rounds[0].isComplete) {
+    game.settings.startedAt = Date.now()
+  }
 }
 
 export const buildInitialGame = (
@@ -120,7 +124,7 @@ export const buildInitialGame = (
     settings: {
       status: 'opened',
       createdBy: userId,
-      createdAt: new Date(Date.now()),
+      createdAt: Date.now(),
       ...gameProperties,
     },
   }

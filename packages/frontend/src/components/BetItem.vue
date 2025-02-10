@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { formatTime } from '@/utils/helpers'
 
-defineProps<{
+const { date } = defineProps<{
   bet: string | undefined
-  date?: Date
+  date?: number
   isRevealed: boolean
 }>()
 </script>

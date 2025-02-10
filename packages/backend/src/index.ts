@@ -2,27 +2,27 @@ import websocketPlugin from '@fastify/websocket'
 import {
   Game,
   Player,
-  generateUID,
-  removeGame,
   findGame,
+  generateUID,
   hasPlayerLeftGame,
-  GameProperties,
+  removeGame,
 } from '@word-guesser/shared'
 import dotenv from 'dotenv'
 import fastify from 'fastify'
 import {
   broadcast,
   broadcastToOne,
-  buildGameStatus,
   buildInitialGame,
-  buildPlayers,
-  buildRounds,
   findPlayer,
   findPlayerById,
   isPlayerInGame,
   parseMessage,
   removePlayerFromGame,
   removePlayerFromPlayers,
+  updateGameStartTime,
+  updateGameStatus,
+  updatePlayers,
+  updateRounds,
 } from './helpers.js'
 
 const server = fastify()
@@ -63,8 +63,8 @@ server.register(async function (fastify) {
               const player = findPlayerById(userId, players)
               const game = findGame(gameId, games)
               if (game) {
-                game.players = buildPlayers(game, player)
-                game.settings.status = buildGameStatus(game)
+                updatePlayers(game, player)
+                updateGameStatus(game)
               }
               broadcast(players, event, game)
             }
@@ -77,8 +77,9 @@ server.register(async function (fastify) {
                   ...message,
                   userId,
                 }
-                game.rounds = buildRounds(game, responseMessage)
-                game.settings.status = buildGameStatus(game)
+                updateRounds(game, responseMessage)
+                updateGameStatus(game)
+                updateGameStartTime(game)
                 broadcast(players, event, game)
               }
             }

@@ -75,7 +75,7 @@ export const useGamesStore = defineStore('games', () => {
     const { event, content, gameId } = message
 
     if (state.socket && state.socket.readyState === WebSocket.OPEN) {
-      state.socket.send(JSON.stringify({ content, date: new Date(), event, gameId }))
+      state.socket.send(JSON.stringify({ content, date: Date.now(), event, gameId }))
     } else {
       console.error(`[ERROR]: WebSocket is not open for game ${state.userId}. Cannot send message.`)
     }

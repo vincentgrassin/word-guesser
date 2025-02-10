@@ -7,6 +7,7 @@ import { useGamesStore } from '@/stores/useGamesStore'
 import { findGame } from '@word-guesser/shared'
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import PlayersArea from '@/components/PlayersArea.vue'
 const { id } = defineProps<{ id: string }>()
 
 const { joinGame, state, connect, setUserId } = useGamesStore()
@@ -28,8 +29,13 @@ onMounted(() => {
     <ActionsArea :gameId="id" />
     <h1>Game {{ id }}</h1>
     <p>User: {{ state.userId }}</p>
-    <GameSettingsArea :game="game" />
-    <RoundsArea :rounds="[...game.rounds].reverse()" />
-    <BetFormArea :gameId="id" :gameStatus="game.settings.status" />
+    <div class="flex flex-col md:flex-row">
+      <GameSettingsArea :game="game" />
+      <div>
+        <PlayersArea :game="game" />
+        <RoundsArea :rounds="[...game.rounds].reverse()" />
+        <BetFormArea :gameId="id" :gameStatus="game.settings.status" />
+      </div>
+    </div>
   </main>
 </template>

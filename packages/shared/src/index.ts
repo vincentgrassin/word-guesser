@@ -19,7 +19,7 @@ export type RequestMessage = {
   gameId?: string
   content?: string
   event: SocketEvent
-  date: Date
+  date: number
 }
 
 export type ResponseMessage = RequestMessage & { userId: string }
@@ -39,8 +39,8 @@ export type GameProperties = {
 export type GameSettings = {
   status: GameStatus
   createdBy: string
-  createdAt: Date
-  startedAt?: Date
+  createdAt: number
+  startedAt?: number
 } & GameProperties
 
 export type Game = {
@@ -104,13 +104,14 @@ export function syncGame(game: Game, games: Game[]) {
   else games.push(game)
 }
 
-export const isOlderThan = (date: Date | undefined, minutes: number): boolean => {
+export const isOlderThan = (date: number | undefined, minutes: number): boolean => {
   if (!date) return false
-  return Date.now() - date.getTime() > 60 * 1000 * minutes
+  return Date.now() - date > 60 * 1000 * minutes
 }
 
 export const hasPlayerLeftGame = (playerId: string, game: Game) => {
   const lastRound = game.rounds[game.rounds.length - 1]
+  if (!lastRound) return false
   const lastMessage = lastRound.messages?.find((m) => m.userId === playerId)
   return isOlderThan(lastMessage?.date, 5)
 }
