@@ -19,7 +19,6 @@ const gameSettings = reactive<GameProperties>({
 })
 
 const submitForm = () => {
-  console.log(gameSettings.duration)
   createGame({ ...gameSettings, duration: gameSettings.duration * 1000 * 60 })
   onSubmitProp()
 }

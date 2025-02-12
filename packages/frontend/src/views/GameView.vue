@@ -30,7 +30,7 @@ onMounted(() => {
     <h1>Game {{ id }}</h1>
     <p>User: {{ state.userId }}</p>
     <div class="flex flex-col md:flex-row">
-      <GameSettingsArea :game="game" />
+      <GameSettingsArea :gameId="game.gameId" />
       <div>
         <PlayersArea :game="game" />
         <RoundsArea :rounds="[...game.rounds].reverse()" />
