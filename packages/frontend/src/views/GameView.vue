@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import ActionsArea from '@/components/ActionsArea.vue'
 import BetFormArea from '@/components/BetFormArea.vue'
-import RoundsArea from '@/components/RoundsArea.vue'
 import GameSettingsArea from '@/components/GameSettingsArea.vue'
+import PlayersArea from '@/components/PlayersArea.vue'
+import RoundsArea from '@/components/RoundsArea.vue'
+import router from '@/router'
 import { useGamesStore } from '@/stores/useGamesStore'
 import { findGame } from '@word-guesser/shared'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import PlayersArea from '@/components/PlayersArea.vue'
 const { id } = defineProps<{ id: string }>()
 
 const { joinGame, state, connect, setUserId } = useGamesStore()
@@ -22,6 +23,15 @@ onMounted(() => {
 
   joinGame(route.params.id as string)
 })
+
+watch(
+  () => game.value?.gameId,
+  (newGameId) => {
+    if (!newGameId) {
+      router.push('/404')
+    }
+  },
+)
 </script>
 
 <template>

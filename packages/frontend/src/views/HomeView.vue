@@ -17,7 +17,7 @@ onMounted(() => {
     <h1>Word Guesser</h1>
     <p>User: {{ state.userId }}</p>
     <SettingsArea />
-    <ul>
+    <ul class="lg:grid-cols- grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
       <li v-for="(game, index) in state.games" :key="index">
         <GameItem :game="game" />
       </li>

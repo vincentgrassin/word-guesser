@@ -9,7 +9,15 @@ const { game } = defineProps<{
 
 <template>
   <div className="p-4 flex flex-col">
-    {{ JSON.stringify(game) }}
-    <RouterLink :to="`/game/${game.gameId}`">Join game {{ game.gameId }}</RouterLink>
+    <RouterLink :to="`/game/${game.gameId}`">
+      <p>
+        {{ game.gameId }}
+      </p>
+      <p>Players: {{ game.players.length }}/ {{ game.settings.maxPlayers }}</p>
+      <p>Rounds:{{ game.rounds.length }}</p>
+      <p>Duration: {{ game.settings.duration }}</p>
+      <p>Type:{{ game.settings.type }}</p>
+      <p>Status: {{ game.settings.status }}</p>
+    </RouterLink>
   </div>
 </template>

@@ -12,7 +12,7 @@ const { round } = defineProps<{
 
 const myBet = computed(() => sortRoundMessages(state.userId, round)?.me)
 
-const partnerBet = computed(() => sortRoundMessages(state.userId, round)?.others[0])
+const teamBets = computed(() => sortRoundMessages(state.userId, round)?.others)
 </script>
 
 <template>
@@ -22,7 +22,8 @@ const partnerBet = computed(() => sortRoundMessages(state.userId, round)?.others
     </div>
     <div class="w-1/2">
       <BetItem
-        v-if="!!partnerBet"
+        v-for="(partnerBet, index) in teamBets"
+        :key="index"
         :bet="partnerBet.content"
         :date="partnerBet.date"
         :isRevealed="round.isComplete"

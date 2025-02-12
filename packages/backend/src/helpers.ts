@@ -32,7 +32,7 @@ export const parseMessage = (m: Buffer): RequestMessage => {
 
 export const updatePlayers = (game: Game, player: Player | undefined) => {
   if (!player) return
-  if (game.players.length === getMaxPlayers(game.settings.type)) return
+  if (game.players.length === game.settings.maxPlayers) return
 
   const hasAlreadyPlayer = game.players.some((p) => p.userId === player.userId)
   if (hasAlreadyPlayer) return
@@ -64,7 +64,7 @@ export const updateRounds = (game: Game, message: ResponseMessage) => {
     })
   } else {
     const currentRound = rounds[rounds.length - 1]
-    const playersNumber = getMaxPlayers(game.settings.type)
+    const playersNumber = game.settings.maxPlayers
     if (currentRound.messages.length === playersNumber) {
       // All players have sent messages, start a new round
       rounds.push({
@@ -89,7 +89,7 @@ export const updateRounds = (game: Game, message: ResponseMessage) => {
 }
 
 export const updateGameStatus = (game: Game) => {
-  const playersNumber = getMaxPlayers(game.settings.type)
+  const playersNumber = game.settings.maxPlayers
 
   if (game.players.length === playersNumber) {
     game.settings.status = 'started'
@@ -181,15 +181,6 @@ export function removePlayerFromPlayers(player: Player, players: Player[]): bool
 
 export function isPlayerInGame(userId: string, game: Game): boolean {
   return game.players.some((p) => p.userId === userId)
-}
-
-export const getMaxPlayers = (type: GameType) => {
-  switch (type) {
-    case 'basic':
-      return 2
-    default:
-      return 2
-  }
 }
 
 export function areAllMessagesEquals(messages: ResponseMessage[], playersNumber: number) {
