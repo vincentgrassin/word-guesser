@@ -16,11 +16,12 @@ const handleSubmit = () => {
 </script>
 
 <template>
-  <form v-if="!(gameStatus === 'closed')" @submit.prevent="handleSubmit" class="rounded border p-4">
+  <form
+    v-if="!(gameStatus === 'win' || gameStatus === 'loss')"
+    @submit.prevent="handleSubmit"
+    class="rounded border p-4"
+  >
     <BaseInputText variant="text" label="My bet" v-model="bet" placeholder="Type here" />
     <BaseButton type="submit">Submit </BaseButton>
   </form>
-  <div v-else>
-    <p>Game is closed</p>
-  </div>
 </template>

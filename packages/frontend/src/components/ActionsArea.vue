@@ -1,19 +1,18 @@
 <script lang="ts" setup>
+import BaseLink from '@/components/ui/BaseLink.vue'
 import { useGamesStore } from '@/stores/useGamesStore'
-import BaseButton from './ui/BaseButton.vue'
-import { RouterLink } from 'vue-router'
 
 defineProps<{ gameId: string }>()
-const { quitGame, deleteGameRequest } = useGamesStore()
+const { quitGame, deleteGame } = useGamesStore()
 </script>
 
 <template>
-  <div class="flex justify-end">
-    <RouterLink :to="`/`">
-      <BaseButton @:click="() => quitGame(gameId)">Quit</BaseButton>
-    </RouterLink>
-    <RouterLink :to="`/`">
-      <BaseButton @:click="() => deleteGameRequest(gameId)">Delete</BaseButton>
-    </RouterLink>
+  <div class="flex justify-end gap-4">
+    <BaseLink :to="`/`">
+      <span @:click="() => quitGame(gameId)">Quit</span>
+    </BaseLink>
+    <BaseLink :to="`/`">
+      <span @:click="() => deleteGame(gameId)">Delete</span>
+    </BaseLink>
   </div>
 </template>

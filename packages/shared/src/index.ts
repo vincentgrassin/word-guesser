@@ -1,6 +1,7 @@
 import { WebSocket as WsWebSocket } from 'ws'
 
-export type GameStatus = 'opened' | 'started' | 'closed'
+export type GameStatus = 'opened' | 'started' | 'win' | 'loss'
+export const gameStatuses = new Set<GameStatus>(['win', 'loss', 'opened', 'started'])
 export type GameType = 'basic' | 'solo'
 
 export type Player = {
@@ -59,6 +60,7 @@ export type SocketEvent =
   | 'JOIN_GAME'
   | 'DELETE_GAME'
   | 'QUIT_GAME'
+  | 'END_GAME'
 
 export type WebSocket = WsWebSocket
 

@@ -10,13 +10,13 @@ const { isOn: isUserModalOpen, setIsOff: closeUserModal, setIsOn: openUserModal 
 </script>
 
 <template>
-  <BaseModal :isOpen="isGameModalOpen" :close="closeGameModal">
-    <GameCreationForm :onSubmit="closeGameModal" />
-  </BaseModal>
-  <BaseModal :isOpen="isUserModalOpen" :close="closeUserModal">
-    <UserSettingsForm :onSubmit="closeUserModal" />
-  </BaseModal>
-  <div>
+  <div class="flex justify-end gap-4">
+    <BaseModal :isOpen="isGameModalOpen" :close="closeGameModal">
+      <GameCreationForm :onSubmit="closeGameModal" />
+    </BaseModal>
+    <BaseModal :isOpen="isUserModalOpen" :close="closeUserModal">
+      <UserSettingsForm :onSubmit="closeUserModal" />
+    </BaseModal>
     <BaseButton @:click="openGameModal">Create game</BaseButton>
     <BaseButton @:click="openUserModal">User settings</BaseButton>
   </div>

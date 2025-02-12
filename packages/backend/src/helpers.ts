@@ -2,6 +2,7 @@ import {
   Game,
   GameProperties,
   GameStatus,
+  gameStatuses,
   GameType,
   PlainPlayer,
   Player,
@@ -98,8 +99,16 @@ export const updateGameStatus = (game: Game) => {
   if (game.rounds.length) {
     const lastRound = game.rounds[game.rounds.length - 1]
     const hasWin = areAllMessagesEquals(lastRound.messages, playersNumber)
-    game.settings.status = hasWin ? 'closed' : game.settings.status
+    game.settings.status = hasWin ? 'win' : game.settings.status
   }
+}
+
+export const updateGameStatusTo = (game: Game, status: string | undefined) => {
+  const value = status as GameStatus
+  if (!value || !gameStatuses.has(value)) {
+    console.error(`Invalid game status: ${status}`)
+  }
+  game.settings.status = value
 }
 
 export const updateGameStartTime = (game: Game) => {

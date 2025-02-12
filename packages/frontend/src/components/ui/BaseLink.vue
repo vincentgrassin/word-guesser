@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, defineProps, type ButtonHTMLAttributes } from 'vue'
+import { computed, defineProps } from 'vue'
+import { RouterLink, type RouterLinkProps } from 'vue-router'
 
 const props = defineProps<
   {
     variant?: 'primary' | 'secondary' | 'danger'
-  } & /** @vue-ignore */ ButtonHTMLAttributes
+  } & RouterLinkProps
 >()
 
-const baseClasses = 'px-4 py-2 rounded-lg transition-colors duration-200'
+const baseClasses = 'px-4 py-2 font-semibold rounded-lg transition-colors duration-200'
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'secondary':
@@ -20,7 +21,7 @@ const variantClasses = computed(() => {
 </script>
 
 <template>
-  <button v-bind="$attrs" :class="[baseClasses, variantClasses]">
+  <RouterLink :to="props.to" v-bind="$attrs" :class="[baseClasses, variantClasses]">
     <slot />
-  </button>
+  </RouterLink>
 </template>

@@ -3,6 +3,7 @@ import {
   syncGame,
   type Game,
   type GameProperties,
+  type GameStatus,
   type RequestMessage,
   type SocketPayload,
 } from '@word-guesser/shared'
@@ -50,6 +51,7 @@ export const useGamesStore = defineStore('games', () => {
           case 'PLAY_ROUND':
           case 'CLOSE_CONNECTION':
           case 'QUIT_GAME':
+          case 'END_GAME':
             const game = payload as Game
             syncGame(game, state.games)
             break
@@ -89,7 +91,11 @@ export const useGamesStore = defineStore('games', () => {
     message({ gameId, event: 'JOIN_GAME' })
   }
 
-  const deleteGameRequest = (gameId: string) => {
+  const endGame = (gameId: string, status: GameStatus) => {
+    message({ gameId, event: 'END_GAME', content: status })
+  }
+
+  const deleteGame = (gameId: string) => {
     message({ gameId, event: 'DELETE_GAME' })
   }
 
@@ -115,8 +121,9 @@ export const useGamesStore = defineStore('games', () => {
     createGame,
     joinGame,
     quitGame,
-    deleteGameRequest,
+    deleteGame,
     setUserId,
     playRound,
+    endGame,
   }
 })

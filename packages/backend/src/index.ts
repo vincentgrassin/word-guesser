@@ -21,6 +21,7 @@ import {
   removePlayerFromPlayers,
   updateGameStartTime,
   updateGameStatus,
+  updateGameStatusTo,
   updatePlayers,
   updateRounds,
 } from './helpers.js'
@@ -50,18 +51,18 @@ server.register(async function (fastify) {
       socket.on('message', (m: Buffer) => {
         const message = parseMessage(m)
         const { event, gameId, content } = message
+        const game = findGame(gameId, games)
         switch (event) {
-          case 'CREATE_GAME':
+          case 'CREATE_GAME': {
             const uid = generateUID()
-
             const newGame = buildInitialGame(uid, userId || '', message.content)
             games.push(newGame)
             broadcast(players, event, newGame)
             break
-          case 'JOIN_GAME':
+          }
+          case 'JOIN_GAME': {
             if (userId && gameId) {
               const player = findPlayerById(userId, players)
-              const game = findGame(gameId, games)
               if (game) {
                 updatePlayers(game, player)
                 updateGameStatus(game)
@@ -69,9 +70,9 @@ server.register(async function (fastify) {
               broadcast(players, event, game)
             }
             break
-          case 'PLAY_ROUND':
+          }
+          case 'PLAY_ROUND': {
             if (userId && gameId) {
-              const game = findGame(gameId, games)
               if (game) {
                 const responseMessage = {
                   ...message,
@@ -84,19 +85,28 @@ server.register(async function (fastify) {
               }
             }
             break
-          case 'QUIT_GAME':
-            const gameToQuit = findGame(gameId, games)
-            if (gameToQuit) {
-              removePlayerFromGame(userId, gameToQuit)
-              broadcast(players, event, gameToQuit)
+          }
+          case 'QUIT_GAME': {
+            if (game) {
+              removePlayerFromGame(userId, game)
+              broadcast(players, event, game)
             }
             break
-          case 'DELETE_GAME':
+          }
+          case 'END_GAME': {
+            if (game) {
+              updateGameStatusTo(game, content)
+              broadcast(players, event, game)
+            }
+            break
+          }
+          case 'DELETE_GAME': {
             if (gameId) {
               const deletedGameId = removeGame(gameId, games)
               broadcast(players, event, deletedGameId)
             }
             break
+          }
         }
       })
 

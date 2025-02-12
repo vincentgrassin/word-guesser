@@ -72,8 +72,13 @@ onBeforeUnmount(() => {
     tabindex="-1"
     ref="modal"
   >
-    <div class="bg-backgroundMute relative w-96 max-w-full rounded-lg p-4">
-      <button class="absolute right-2 top-2 text-xl" aria-label="Close modal" @click="close">
+    <div class="relative w-96 max-w-full rounded-lg bg-backgroundMute p-4">
+      <button
+        v-if="!!close"
+        class="absolute right-2 top-2 text-xl"
+        aria-label="Close modal"
+        @click="close"
+      >
         &times;
       </button>
       <slot />
