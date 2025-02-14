@@ -4,6 +4,7 @@ import { useGamesStore } from '@/stores/useGamesStore'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import { computed, watch } from 'vue'
 import BaseLink from '@/components/ui/BaseLink.vue'
+import { formatDuration } from '@/utils/helpers'
 
 const { gameId } = defineProps<{ gameId: string }>()
 const { state, endGame, deleteGame } = useGamesStore()
@@ -21,8 +22,8 @@ watch(gameTimer, (newTimer) => {
   <div class="rounded border p-4" v-if="!!game">
     <h2>Settings</h2>
     <p>Round:{{ game.rounds.length }}</p>
-    <p>PLayers: {{ game.players.length }}/{{ game.settings.maxPlayers }}</p>
-    <p>Diff: {{ gameTimer }}</p>
+    <p>Players: {{ game.players.length }}/{{ game.settings.maxPlayers }}</p>
+    <p>Diff: {{ formatDuration(gameTimer) }}</p>
     <p>Status: {{ game.settings.status }}</p>
     <p>Type: {{ game.settings.type }}</p>
     <BaseModal :isOpen="game.settings.status === 'loss' || game.settings.status === 'win'">

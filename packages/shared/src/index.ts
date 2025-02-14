@@ -84,7 +84,7 @@ export function sortRoundMessages(
 export function findGame(gameId: string | undefined, games: Game[]): Game | undefined {
   if (!gameId) return undefined
   for (const game of games) {
-    if (game.gameId === gameId) {
+    if (game?.gameId === gameId) {
       return game
     }
   }

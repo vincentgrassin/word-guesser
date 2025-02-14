@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import GameItem from '@/components/GameItem.vue'
 import SettingsArea from '@/components/SettingsArea.vue'
+import { useUserConnect } from '@/hooks/useUserConnect'
 import { useGamesStore } from '@/stores/useGamesStore'
-import { generateUID } from '@word-guesser/shared'
-import { onMounted } from 'vue'
-const uid = localStorage.getItem('userId') || generateUID()
-const { state, connect, setUserId } = useGamesStore()
-onMounted(() => {
-  connect(uid)
-  if (!state.userId) setUserId(uid)
-})
+const { state } = useGamesStore()
+useUserConnect()
 </script>
 
 <template>

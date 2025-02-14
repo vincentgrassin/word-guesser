@@ -30,47 +30,58 @@ export const useGamesStore = defineStore('games', () => {
     localStorage.setItem('userId', uid)
   }
 
-  const connect = (userId: string) => {
-    const wsUrl = `${import.meta.env.VITE_WEB_SOCKET_URL}/connect/${userId}`
-    if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
-      state.socket = new WebSocket(wsUrl)
+  const connect = (userId: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const wsUrl = `${import.meta.env.VITE_WEB_SOCKET_URL}/connect/${userId}`
+      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
+        state.socket = new WebSocket(wsUrl)
 
-      state.socket.onopen = () => {
-        console.info(`[INFO]: Connected to socket with`, userId)
-      }
-
-      state.socket.onmessage = (e) => {
-        const { event, payload }: SocketPayload = JSON.parse(e.data)
-        switch (event) {
-          case 'LIST_GAMES': {
-            state.games = payload as Game[]
-            break
-          }
-          case 'CREATE_GAME':
-          case 'JOIN_GAME':
-          case 'PLAY_ROUND':
-          case 'CLOSE_CONNECTION':
-          case 'QUIT_GAME':
-          case 'END_GAME':
-            const game = payload as Game
-            syncGame(game, state.games)
-            break
-          case 'DELETE_GAME':
-            const gameId = payload as string | false
-            if (gameId) {
-              removeGame(gameId, state.games)
-            }
+        state.socket.onopen = () => {
+          console.info(`[INFO]: Connected to socket with`, userId)
+          resolve()
         }
-      }
 
-      state.socket.onclose = () => {
-        console.info(`[INFO]: WebSocket connection closed for`, userId)
-      }
+        state.socket.onmessage = (e) => {
+          const { event, payload }: SocketPayload = JSON.parse(e.data)
+          switch (event) {
+            case 'LIST_GAMES': {
+              state.games = payload as Game[]
+              break
+            }
+            case 'CREATE_GAME':
+            case 'JOIN_GAME':
+            case 'PLAY_ROUND':
+            case 'CLOSE_CONNECTION':
+            case 'QUIT_GAME':
+            case 'END_GAME': {
+              const game = payload as Game
+              if (game) {
+                syncGame(game, state.games)
+              }
+              break
+            }
+            case 'DELETE_GAME': {
+              const gameId = payload as string | false
+              if (gameId) {
+                removeGame(gameId, state.games)
+              }
+              break
+            }
+          }
+        }
 
-      state.socket.onerror = (error) => {
-        console.error(`[ERROR]: WebSocket error for ${userId}`, error)
+        state.socket.onclose = () => {
+          console.info(`[INFO]: WebSocket connection closed for`, userId)
+        }
+
+        state.socket.onerror = (error) => {
+          console.error(`[ERROR]: WebSocket error for ${userId}`, error)
+          reject(error)
+        }
+      } else {
+        resolve()
       }
-    }
+    })
   }
 
   const message = (message: Omit<RequestMessage, 'date'>) => {

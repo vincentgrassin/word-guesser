@@ -8,11 +8,11 @@ const { quitGame, deleteGame } = useGamesStore()
 
 <template>
   <div class="flex justify-end gap-4">
-    <BaseLink :to="`/`">
-      <span @:click="() => quitGame(gameId)">Quit</span>
-    </BaseLink>
-    <BaseLink :to="`/`">
-      <span @:click="() => deleteGame(gameId)">Delete</span>
-    </BaseLink>
+    <div @:click="() => quitGame(gameId)" class="flex">
+      <BaseLink :to="`/`"> Quit </BaseLink>
+    </div>
+    <div @:click="() => deleteGame(gameId)" class="flex">
+      <BaseLink :to="`/`"> Delete </BaseLink>
+    </div>
   </div>
 </template>
