@@ -19,7 +19,7 @@ const { date } = defineProps<{
       }"
       class="text-xl"
     >
-      {{ bet }}
+      {{ isRevealed ? bet : 'placeholder' }}
     </p>
     <p
       v-if="!!date"

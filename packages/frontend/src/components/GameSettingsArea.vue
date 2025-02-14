@@ -2,6 +2,7 @@
 import { useGameTimer } from '@/hooks/useGameTimer'
 import { useGamesStore } from '@/stores/useGamesStore'
 import BaseModal from '@/components/ui/BaseModal.vue'
+import ActionsArea from '@/components/ActionsArea.vue'
 import { computed, watch } from 'vue'
 import BaseLink from '@/components/ui/BaseLink.vue'
 import { formatDuration } from '@/utils/helpers'
@@ -30,5 +31,6 @@ watch(gameTimer, (newTimer) => {
       <p>Your game status is {{ game.settings.status }}</p>
       <BaseLink to="/"> <span @:click="() => deleteGame(gameId)"> Go home </span> </BaseLink>
     </BaseModal>
+    <ActionsArea :gameId="gameId" />
   </div>
 </template>

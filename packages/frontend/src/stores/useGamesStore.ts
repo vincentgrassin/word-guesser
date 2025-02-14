@@ -25,11 +25,6 @@ export const useGamesStore = defineStore('games', () => {
     activeGame: null,
   })
 
-  const setUserId = (uid: string) => {
-    state.userId = uid
-    localStorage.setItem('userId', uid)
-  }
-
   const connect = (userId: string): Promise<void> => {
     return new Promise((resolve, reject) => {
       const wsUrl = `${import.meta.env.VITE_WEB_SOCKET_URL}/connect/${userId}`
@@ -133,7 +128,6 @@ export const useGamesStore = defineStore('games', () => {
     joinGame,
     quitGame,
     deleteGame,
-    setUserId,
     playRound,
     endGame,
   }

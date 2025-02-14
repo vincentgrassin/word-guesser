@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import ActionsArea from '@/components/ActionsArea.vue'
 import BetFormArea from '@/components/BetFormArea.vue'
 import GameSettingsArea from '@/components/GameSettingsArea.vue'
 import PlayersArea from '@/components/PlayersArea.vue'
@@ -30,12 +29,11 @@ watch(
 <template>
   <main>
     <div v-if="!!game">
-      <ActionsArea :gameId="id" />
       <h1>Game {{ id }}</h1>
       <p>User: {{ state.userId }}</p>
       <div class="flex flex-col md:flex-row">
         <GameSettingsArea :gameId="game.gameId" />
-        <div>
+        <div class="flex-1">
           <PlayersArea :game="game" />
           <RoundsArea :rounds="[...game.rounds].reverse()" />
           <BetFormArea :gameId="id" :gameStatus="game.settings.status" />

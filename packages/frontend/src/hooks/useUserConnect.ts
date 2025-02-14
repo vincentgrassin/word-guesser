@@ -3,18 +3,13 @@ import { generateUID } from '@word-guesser/shared'
 import { nextTick, onMounted } from 'vue'
 
 export function useUserConnect(callBack?: () => void) {
-  const { connect, state, setUserId } = useGamesStore()
+  const { connect, state } = useGamesStore()
   onMounted(async () => {
     if (!state.socket) {
-      const savedUserId = localStorage.getItem('userId')
-      if (savedUserId) {
-        await connect(savedUserId)
-        setUserId(savedUserId)
-      } else {
-        const uid = generateUID()
-        await connect(uid)
-        setUserId(uid)
-      }
+      const userId = localStorage.getItem('userId') || generateUID()
+      await connect(userId)
+      state.userId = userId
+      localStorage.setItem('userId', userId)
     }
     if (callBack) {
       await nextTick()
