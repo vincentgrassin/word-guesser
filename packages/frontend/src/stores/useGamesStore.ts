@@ -4,6 +4,7 @@ import {
   type Game,
   type GameProperties,
   type GameStatus,
+  type PlayerSettings,
   type RequestMessage,
   type SocketPayload,
 } from '@word-guesser/shared'
@@ -25,9 +26,9 @@ export const useGamesStore = defineStore('games', () => {
     activeGame: null,
   })
 
-  const connect = (userId: string): Promise<void> => {
+  const connect = (userId: string, userName: string): Promise<void> => {
     return new Promise((resolve, reject) => {
-      const wsUrl = `${import.meta.env.VITE_WEB_SOCKET_URL}/connect/${userId}`
+      const wsUrl = `${import.meta.env.VITE_WEB_SOCKET_URL}/connect/${userId}?userName=${userName}`
       if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
         state.socket = new WebSocket(wsUrl)
 
@@ -48,6 +49,7 @@ export const useGamesStore = defineStore('games', () => {
             case 'PLAY_ROUND':
             case 'CLOSE_CONNECTION':
             case 'QUIT_GAME':
+            case 'UPDATE_PLAYER':
             case 'END_GAME': {
               const game = payload as Game
               if (game) {
@@ -113,6 +115,10 @@ export const useGamesStore = defineStore('games', () => {
     message({ gameId, event: 'PLAY_ROUND', content })
   }
 
+  const updatePlayerSettings = (settings: PlayerSettings) => {
+    message({ event: 'UPDATE_PLAYER', content: JSON.stringify(settings) })
+  }
+
   const disconnect = () => {
     if (state.socket) {
       state.socket.close()
@@ -130,5 +136,6 @@ export const useGamesStore = defineStore('games', () => {
     deleteGame,
     playRound,
     endGame,
+    updatePlayerSettings,
   }
 })

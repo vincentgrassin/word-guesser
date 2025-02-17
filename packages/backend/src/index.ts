@@ -2,6 +2,8 @@ import websocketPlugin from '@fastify/websocket'
 import {
   Game,
   Player,
+  SocketRequestParams,
+  SocketRequestQuery,
   findGame,
   generateUID,
   hasPlayerLeftGame,
@@ -22,8 +24,11 @@ import {
   updateGameStartTime,
   updateGameStatus,
   updateGameStatusTo,
-  updatePlayers,
+  addPlayerToGame,
   updateRounds,
+  updatePlayer,
+  updatePlayerInGames,
+  cleanPlayer,
 } from './helpers.js'
 
 const server = fastify()
@@ -40,10 +45,11 @@ server.register(async function (fastify) {
     '/connect/:userId',
     { websocket: true },
     (socket /* WebSocket */, req /* FastifyRequest */) => {
-      const userId = (req.params as { userId: string }).userId
+      const userId = (req.params as SocketRequestParams).userId
       const newPlayer = {
         userId,
         socket,
+        userName: (req.query as SocketRequestQuery).userName,
       }
       players.push(newPlayer)
       broadcastToOne(newPlayer, 'LIST_GAMES', games)
@@ -64,7 +70,7 @@ server.register(async function (fastify) {
             if (userId && gameId) {
               const player = findPlayerById(userId, players)
               if (game) {
-                updatePlayers(game, player)
+                addPlayerToGame(game, player)
                 updateGameStatus(game)
               }
               broadcast(players, event, game)
@@ -101,6 +107,25 @@ server.register(async function (fastify) {
             break
           }
           case 'DELETE_GAME': {
+            if (gameId) {
+              const deletedGameId = removeGame(gameId, games)
+              broadcast(players, event, deletedGameId)
+            }
+            break
+          }
+          case 'UPDATE_PLAYER': {
+            const player = findPlayerById(userId, players)
+            if (player) {
+              updatePlayer(content, player)
+              games.forEach((game) => {
+                const playerIndex = game.players.findIndex((p) => p.userId === player.userId)
+                if (playerIndex !== -1) {
+                  game.players[playerIndex] = cleanPlayer(player)
+                  broadcast(players, event, game)
+                }
+              })
+            }
+
             if (gameId) {
               const deletedGameId = removeGame(gameId, games)
               broadcast(players, event, deletedGameId)

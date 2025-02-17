@@ -4,11 +4,22 @@ export type GameStatus = 'opened' | 'started' | 'win' | 'loss'
 export const gameStatuses = new Set<GameStatus>(['win', 'loss', 'opened', 'started'])
 export type GameType = 'basic' | 'solo'
 
+export type SocketRequestQuery = {
+  userName: string
+}
+export type SocketRequestParams = {
+  userId: string
+}
+
+export type PlayerSettings = {
+  userName: string
+}
+
 export type Player = {
   socket: WsWebSocket
   userId: string
-  // userName: string
-}
+} & PlayerSettings
+
 export type PlainPlayer = Omit<Player, 'socket'>
 
 export type SocketPayload = {
@@ -61,6 +72,7 @@ export type SocketEvent =
   | 'DELETE_GAME'
   | 'QUIT_GAME'
   | 'END_GAME'
+  | 'UPDATE_PLAYER'
 
 export type WebSocket = WsWebSocket
 

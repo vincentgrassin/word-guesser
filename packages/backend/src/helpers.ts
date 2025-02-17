@@ -3,9 +3,9 @@ import {
   GameProperties,
   GameStatus,
   gameStatuses,
-  GameType,
   PlainPlayer,
   Player,
+  PlayerSettings,
   RequestMessage,
   ResponseMessage,
   SocketEvent,
@@ -31,7 +31,16 @@ export const parseMessage = (m: Buffer): RequestMessage => {
   })
 }
 
-export const updatePlayers = (game: Game, player: Player | undefined) => {
+export const updatePlayerInGames = (games: Game[], player: Player) => {
+  games.forEach((game) => {
+    const playerIndex = game.players.findIndex((p) => p.userId === player.userId)
+    if (playerIndex !== -1) {
+      game.players[playerIndex] = cleanPlayer(player)
+    }
+  })
+}
+
+export const addPlayerToGame = (game: Game, player: Player | undefined) => {
   if (!player) return
   if (game.players.length === game.settings.maxPlayers) return
 
@@ -40,6 +49,13 @@ export const updatePlayers = (game: Game, player: Player | undefined) => {
 
   const cleanedPlayer = cleanPlayer(player)
   game.players.push(cleanedPlayer)
+}
+
+export const updatePlayer = (rawPlayerSettings: string | undefined, player: Player) => {
+  if (!rawPlayerSettings) return
+  const playerSettings: PlayerSettings = JSON.parse(rawPlayerSettings)
+  Object.assign(player, playerSettings)
+  return player
 }
 
 export const updateRounds = (game: Game, message: ResponseMessage) => {
@@ -112,7 +128,7 @@ export const updateGameStatusTo = (game: Game, status: string | undefined) => {
 }
 
 export const updateGameStartTime = (game: Game) => {
-  if (game.rounds.length && game.rounds[0].isComplete) {
+  if (game.rounds.length && game.rounds[0].isComplete && !game.settings.startedAt) {
     game.settings.startedAt = Date.now()
   }
 }

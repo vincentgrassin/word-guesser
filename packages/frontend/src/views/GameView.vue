@@ -13,7 +13,13 @@ const { id } = defineProps<{ id: string }>()
 
 const { joinGame, state } = useGamesStore()
 const route = useRoute()
-useUserConnect(() => joinGame(route.params.id as string))
+useUserConnect(() => {
+  const gameId = route.params.id as string
+  const game = findGame(gameId, state.games)
+  if (game && game.players.every((p) => p.userId !== state.userId)) {
+    joinGame(gameId)
+  }
+})
 
 const game = computed(() => findGame(id, state.games))
 watch(
