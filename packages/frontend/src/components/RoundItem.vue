@@ -10,9 +10,8 @@ const { round } = defineProps<{
   round: Round
 }>()
 
-const myBet = computed(() => sortRoundMessages(state.userId, round)?.me)
-
-const teamBets = computed(() => sortRoundMessages(state.userId, round)?.others)
+const myBet = computed(() => sortRoundMessages(state.user.userId, round)?.me)
+const teamBets = computed(() => sortRoundMessages(state.user.userId, round)?.others)
 </script>
 
 <template>

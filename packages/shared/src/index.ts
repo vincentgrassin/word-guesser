@@ -11,16 +11,16 @@ export type SocketRequestParams = {
   userId: string
 }
 
-export type PlayerSettings = {
+export type User = {
+  userId: string
   userName: string
 }
 
+export type PlayerSettings = Omit<User, 'userId'>
+
 export type Player = {
   socket: WsWebSocket
-  userId: string
-} & PlayerSettings
-
-export type PlainPlayer = Omit<Player, 'socket'>
+} & User
 
 export type SocketPayload = {
   event: SocketEvent
@@ -59,7 +59,7 @@ export type Game = {
   gameId: string
   settings: GameSettings
   rounds: Round[]
-  players: PlainPlayer[]
+  players: User[]
 }
 
 export type SocketEvent =
@@ -128,4 +128,9 @@ export const hasPlayerLeftGame = (playerId: string, game: Game) => {
   if (!lastRound) return false
   const lastMessage = lastRound.messages?.find((m) => m.userId === playerId)
   return isOlderThan(lastMessage?.date, 5)
+}
+
+export function isPlayerInGame(userId: string, game: Game | undefined): boolean {
+  if (!game) return false
+  return game.players.some((p) => p.userId === userId)
 }

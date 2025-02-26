@@ -8,6 +8,7 @@ import {
   generateUID,
   hasPlayerLeftGame,
   removeGame,
+  isPlayerInGame,
 } from '@word-guesser/shared'
 import dotenv from 'dotenv'
 import fastify from 'fastify'
@@ -17,7 +18,6 @@ import {
   buildInitialGame,
   findPlayer,
   findPlayerById,
-  isPlayerInGame,
   parseMessage,
   removePlayerFromGame,
   removePlayerFromPlayers,

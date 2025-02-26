@@ -10,7 +10,7 @@ useUserConnect()
 <template>
   <main>
     <h1>Word Guesser</h1>
-    <p>User: {{ state.userId }}</p>
+    <p>User: {{ state.user.userId }}</p>
     <SettingsArea />
     <ul class="lg:grid-cols- grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
       <li v-for="(game, index) in state.games" :key="index">

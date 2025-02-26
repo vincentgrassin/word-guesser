@@ -7,6 +7,7 @@ import {
   type PlayerSettings,
   type RequestMessage,
   type SocketPayload,
+  type User,
 } from '@word-guesser/shared'
 import { defineStore } from 'pinia'
 import { reactive } from 'vue'
@@ -14,16 +15,17 @@ import { reactive } from 'vue'
 type GamesState = {
   games: Game[]
   socket: WebSocket | null
-  userId: string
-  activeGame: Game | null
+  user: User
 }
 
 export const useGamesStore = defineStore('games', () => {
   const state: GamesState = reactive({
     games: [],
     socket: null as WebSocket | null,
-    userId: '',
-    activeGame: null,
+    user: {
+      userId: '',
+      userName: '',
+    },
   })
 
   const connect = (userId: string, userName: string): Promise<void> => {
@@ -81,13 +83,25 @@ export const useGamesStore = defineStore('games', () => {
     })
   }
 
+  const setUserId = (id: string) => {
+    state.user.userId = id
+    localStorage.setItem('userId', id)
+  }
+
+  const setUserName = (name: string) => {
+    state.user.userName = name
+    localStorage.setItem('userName', name)
+  }
+
   const message = (message: Omit<RequestMessage, 'date'>) => {
     const { event, content, gameId } = message
 
     if (state.socket && state.socket.readyState === WebSocket.OPEN) {
       state.socket.send(JSON.stringify({ content, date: Date.now(), event, gameId }))
     } else {
-      console.error(`[ERROR]: WebSocket is not open for game ${state.userId}. Cannot send message.`)
+      console.error(
+        `[ERROR]: WebSocket is not open for game ${state.user.userId}. Cannot send message.`,
+      )
     }
   }
 
@@ -137,5 +151,7 @@ export const useGamesStore = defineStore('games', () => {
     playRound,
     endGame,
     updatePlayerSettings,
+    setUserId,
+    setUserName,
   }
 })

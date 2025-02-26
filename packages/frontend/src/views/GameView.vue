@@ -6,7 +6,7 @@ import RoundsArea from '@/components/RoundsArea.vue'
 import { useUserConnect } from '@/hooks/useUserConnect'
 import router from '@/router'
 import { useGamesStore } from '@/stores/useGamesStore'
-import { findGame } from '@word-guesser/shared'
+import { findGame, isPlayerInGame } from '@word-guesser/shared'
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 const { id } = defineProps<{ id: string }>()
@@ -16,17 +16,21 @@ const route = useRoute()
 useUserConnect(() => {
   const gameId = route.params.id as string
   const game = findGame(gameId, state.games)
-  if (game && game.players.every((p) => p.userId !== state.userId)) {
+  if (!isPlayerInGame(state.user.userId, game)) {
     joinGame(gameId)
   }
 })
-
 const game = computed(() => findGame(id, state.games))
 watch(
   () => game.value?.gameId,
   (newGameId) => {
     if (!newGameId) {
       router.push('/404')
+      return
+    }
+    const game = findGame(newGameId, state.games)
+    if (!isPlayerInGame(state.user.userId, game)) {
+      joinGame(newGameId)
     }
   },
 )
@@ -36,7 +40,7 @@ watch(
   <main>
     <div v-if="!!game">
       <h1>Game {{ id }}</h1>
-      <p>User: {{ state.userId }}</p>
+      <p>User: {{ state.user.userId }}</p>
       <div class="flex flex-col md:flex-row">
         <GameSettingsArea :gameId="game.gameId" />
         <div class="flex-1">

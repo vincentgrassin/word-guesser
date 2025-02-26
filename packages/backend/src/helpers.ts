@@ -3,7 +3,7 @@ import {
   GameProperties,
   GameStatus,
   gameStatuses,
-  PlainPlayer,
+  User,
   Player,
   PlayerSettings,
   RequestMessage,
@@ -178,7 +178,7 @@ export function findPlayer(socket: WebSocket, players: Player[]): Player | undef
   return players.find((p) => p.socket === socket)
 }
 
-export function cleanPlayer(player: Player): PlainPlayer {
+export function cleanPlayer(player: Player): User {
   const { socket, ...rest } = player
   return rest
 }
@@ -202,10 +202,6 @@ export function removePlayerFromPlayers(player: Player, players: Player[]): bool
   }
 
   return true
-}
-
-export function isPlayerInGame(userId: string, game: Game): boolean {
-  return game.players.some((p) => p.userId === userId)
 }
 
 export function areAllMessagesEquals(messages: ResponseMessage[], playersNumber: number) {
