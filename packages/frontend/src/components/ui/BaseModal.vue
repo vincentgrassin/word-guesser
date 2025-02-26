@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 const { isOpen, close } = defineProps<{
   isOpen: boolean
@@ -18,13 +19,11 @@ const trapFocus = (e: KeyboardEvent) => {
 
   if (e.key === 'Tab') {
     if (e.shiftKey) {
-      // Shift + Tab - focus backwards
       if (document.activeElement === firstFocusableElement.value) {
         e.preventDefault()
         lastFocusableElement.value?.focus()
       }
     } else {
-      // Tab - focus forwards
       if (document.activeElement === lastFocusableElement.value) {
         e.preventDefault()
         firstFocusableElement.value?.focus()
@@ -33,13 +32,12 @@ const trapFocus = (e: KeyboardEvent) => {
   }
 }
 
-// When modal opens, find focusable elements and focus the first one
+// Watch for modal open/close state
 watch(
   () => isOpen,
   async (newValue) => {
     if (newValue) {
-      await nextTick() // Wait for DOM to update
-
+      await nextTick()
       const focusableElements = modal.value?.querySelectorAll(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       ) as NodeListOf<HTMLElement> | undefined
@@ -47,7 +45,7 @@ watch(
       if (focusableElements?.length) {
         firstFocusableElement.value = focusableElements[0]
         lastFocusableElement.value = focusableElements[focusableElements.length - 1]
-        firstFocusableElement.value.focus() // Move focus into modal
+        firstFocusableElement.value.focus()
         document.addEventListener('keydown', trapFocus)
       }
     } else {
@@ -62,26 +60,38 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-    @click.self="close"
-    aria-labelledby="modal-title"
-    role="dialog"
-    aria-hidden="false"
-    tabindex="-1"
-    ref="modal"
+  <Transition
+    enter-active-class="duration-300 ease-out"
+    enter-from-class="transform opacity-0"
+    enter-to-class="opacity-100"
+    leave-active-class="duration-200 ease-in"
+    leave-from-class="opacity-100"
+    leave-to-class="transform opacity-0"
   >
-    <div class="relative w-96 max-w-full rounded-lg bg-backgroundMute p-4">
-      <button
-        v-if="!!close"
-        class="absolute right-2 top-2 text-xl"
-        aria-label="Close modal"
-        @click="close"
+    <div
+      v-if="isOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      @click.self="close"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-hidden="false"
+      tabindex="-1"
+      ref="modal"
+    >
+      <div
+        v-if="isOpen"
+        class="relative w-3/4 max-w-full rounded-lg border-[3px] border-black bg-background px-8 py-16 lg:w-1/2"
       >
-        &times;
-      </button>
-      <slot />
+        <BaseButton
+          v-if="!!close"
+          class="absolute right-4 top-4"
+          variant="secondary"
+          aria-label="Close modal"
+          @click="close"
+          >&times;
+        </BaseButton>
+        <slot />
+      </div>
     </div>
-  </div>
+  </Transition>
 </template>

@@ -9,8 +9,8 @@ defineProps<
 </script>
 
 <template>
-  <fieldset class="px-4 py-2">
-    <legend>{{ label }}:</legend>
+  <fieldset>
+    <legend class="font-bold">{{ label }}</legend>
     <slot />
   </fieldset>
 </template>

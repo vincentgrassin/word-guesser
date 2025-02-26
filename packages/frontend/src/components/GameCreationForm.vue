@@ -25,7 +25,7 @@ const submitForm = () => {
 </script>
 
 <template>
-  <form @submit.prevent="submitForm" class="flex flex-col">
+  <form @submit.prevent="submitForm" class="flex flex-col gap-4 md:gap-8">
     <BaseInputText variant="number" label="Players" v-model="gameSettings.maxPlayers" />
     <BaseInputText variant="number" label="Timer" v-model="gameSettings.duration" />
     <BaseRadioGroup label="Game type">

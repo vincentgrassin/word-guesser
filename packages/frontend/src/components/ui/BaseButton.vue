@@ -7,14 +7,15 @@ const props = defineProps<
   } & /** @vue-ignore */ ButtonHTMLAttributes
 >()
 
-const baseClasses = 'px-4 py-2 rounded-lg transition-colors duration-200'
+const baseClasses =
+  'px-4 py-2 rounded-md transition-all duration-200 border-2 font-bold active:translate-x-1 active:translate-y-1 border-black shadow-[6px_6px_0px_black] hover:shadow-none hover:translate-x-1 hover:translate-y-1'
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'secondary':
-      return 'bg-gray-500 text-white hover:bg-gray-600'
+      return 'bg-secondary'
     case 'primary':
     default:
-      return 'bg-blue-500 text-white hover:bg-blue-600'
+      return 'bg-primary'
   }
 })
 </script>
