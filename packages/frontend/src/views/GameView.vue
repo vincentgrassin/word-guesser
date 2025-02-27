@@ -37,17 +37,13 @@ watch(
 </script>
 
 <template>
-  <main>
-    <div v-if="!!game">
-      <h1>Game {{ id }}</h1>
-      <p>User: {{ state.user.userId }}</p>
-      <div class="flex flex-col md:flex-row">
-        <GameSettingsArea :gameId="game.gameId" />
-        <div class="flex-1">
-          <PlayersArea :game="game" />
-          <RoundsArea :rounds="[...game.rounds].reverse()" />
-          <BetFormArea :gameId="id" :gameStatus="game.settings.status" />
-        </div>
+  <main class="h-full">
+    <div v-if="!!game" class="flex h-full flex-col md:flex-row">
+      <GameSettingsArea :gameId="game.gameId" class="w-full md:w-1/5" />
+      <div class="flex-1">
+        <BetFormArea :gameId="id" :gameStatus="game.settings.status" />
+        <PlayersArea :game="game" />
+        <RoundsArea :rounds="[...game.rounds].reverse()" />
       </div>
     </div>
     <div v-else>

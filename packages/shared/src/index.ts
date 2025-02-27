@@ -93,6 +93,18 @@ export function sortRoundMessages(
   return { me: userMessage, others: otherMessages }
 }
 
+export function sortPlayers(
+  userId: string,
+  players: User[],
+): {
+  me?: User
+  others: User[]
+} {
+  const me = players.find((p) => p.userId === userId)
+  const otherPlayers = players.filter((p) => p.userId !== userId)
+  return { me, others: otherPlayers }
+}
+
 export function findGame(gameId: string | undefined, games: Game[]): Game | undefined {
   if (!gameId) return undefined
   for (const game of games) {

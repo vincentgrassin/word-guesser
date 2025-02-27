@@ -1,23 +1,48 @@
 <script lang="ts" setup>
 import { formatTime } from '@/utils/helpers'
+import { computed } from 'vue'
 
-const { date } = defineProps<{
+const { date, level } = defineProps<{
   bet: string | undefined
   date?: number
   isRevealed: boolean
+  level?: 'low' | 'medium' | 'high' | 'extreme'
 }>()
+
+const levelClass = computed(() => {
+  switch (level) {
+    case 'medium':
+      return 'border-yellow shadow-yellow'
+    case 'high':
+      return 'border-orange shadow-orange'
+    case 'extreme':
+      return 'border-red shadow-red'
+    case 'low':
+    default:
+      return 'border-primary shadow-primary'
+  }
+})
 </script>
 
 <template>
   <div
-    class="flex items-center justify-between gap-4 rounded-3xl bg-gradient-to-b from-red-900 to-red-800 px-6 py-2 shadow-lg transition-all duration-1000 ease-in-out"
+    :class="[
+      levelClass,
+      'relative flex items-center justify-between gap-4 border-[4px] bg-white px-6 py-3 shadow-[4px_4px_0]',
+    ]"
   >
+    <div
+      :class="[
+        levelClass,
+        'absolute bottom-[-10px] left-6 h-4 w-4 -rotate-45 border-b-[4px] border-l-[4px] bg-white shadow-[0px_4px_0]',
+      ]"
+    ></div>
     <p
       :class="{
         'blur-sm': !isRevealed,
-        'transition-all duration-1000 ease-in-out': true,
+        'transition-all duration-700 ease-in-out': true,
       }"
-      class="text-xl"
+      class="text-xl font-bold"
     >
       {{ isRevealed ? bet : 'placeholder' }}
     </p>
@@ -25,8 +50,9 @@ const { date } = defineProps<{
       v-if="!!date"
       :class="{
         'blur-sm': !isRevealed,
-        'transition-all duration-1000 ease-in-out': true,
+        'transition-all duration-700 ease-in-out': true,
       }"
+      class="font-mono text-sm"
     >
       {{ formatTime(date) }}
     </p>

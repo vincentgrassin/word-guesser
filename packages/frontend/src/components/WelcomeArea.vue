@@ -8,6 +8,6 @@ console.log('welcome', state)
 <template>
   <div class="flex flex-col gap-2">
     <BaseText as="h1" content="Word guesser" size="2xl" />
-    <BaseText as="p" :content="`Welcome ${state.user.userName}`" />
+    <BaseText as="p" :content="`${state.user.userName}`" />
   </div>
 </template>

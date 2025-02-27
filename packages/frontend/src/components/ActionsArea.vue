@@ -7,7 +7,7 @@ const { quitGame, deleteGame } = useGamesStore()
 </script>
 
 <template>
-  <div class="flex justify-end gap-4">
+  <div class="flex justify-end gap-4 py-4">
     <div @:click="() => quitGame(gameId)" class="flex">
       <BaseLink :to="`/`"> Quit </BaseLink>
     </div>

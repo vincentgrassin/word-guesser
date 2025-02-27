@@ -1,11 +1,127 @@
-@import './base.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-#app {
-  margin: 0 auto;
-  padding: 2rem;
+/* color palette from <https://github.com/vuejs/theme> */
+:root {
+  --vt-c-white: #ffffff;
+  --vt-c-blue: #88AAEE;
+  --vt-c-light-blue: #E0ECFF;
+  --vt-c-dark-blue: #3E5B9B;
+  --vt-c-yellow: #FFD91A;
+  --vt-c-orange: #EE9955;
+  --vt-c-red: #DD6677;
+  --vt-c-white-soft: #f8f8f8;
+  --vt-c-white-mute: #f2f2f2;
+
+  --vt-c-black: #181818;
+  --vt-c-black-soft: #222222;
+  --vt-c-black-mute: #282828;
+
+  --vt-c-indigo: #2c3e50; 
+
+  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
+  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
+  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
+  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
+
+  --vt-c-text-light-1: var(--vt-c-indigo);
+  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
+  --vt-c-text-dark-1: var(--vt-c-white);
+  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
+}
+
+/* semantic color variables for this project */
+:root {
+  --color-background: var(--vt-c-light-blue);
+  --color-primary: var(--vt-c-blue);
+  --color-secondary: var(--vt-c-white-soft);
+  --color-yellow: var(--vt-c-yellow);  
+  --color-orange: var(--vt-c-orange);
+  --color-red: var(--vt-c-red);
+  --color-light: var(--vt-c-light-blue);
+  --color-border: var(--vt-c-black);
+  --color-border-hover: var(--vt-c-divider-light-1);
+  --color-heading: var(--vt-c-text-light-1);
+  --color-text: var(--vt-c-text-light-1);
+  --section-gap: 160px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: var(--vt-c-dark-blue);
+    --color-primary: var(--vt-c-blue);
+    --color-secondary: var(--vt-c-light-blue);
+    --color-yellow: var(--vt-c-yellow);    
+    --color-orange: var(--vt-c-orange);
+    --color-red: var(--vt-c-red);
+    --color-light: var(--vt-c-light-blue);
+    --color-border: var(--vt-c-white);
+    --color-border-hover: var(--vt-c-divider-dark-1);
+    --color-heading: var(--vt-c-text-dark-1);
+    --color-text: var(--vt-c-text-dark-2);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
   font-weight: normal;
 }
 
+body {
+  min-height: 100vh;
+  color: var(--color-text);
+  background: var(--color-background);
+  background-image: radial-gradient(var(--color-primary) 10%, transparent 10%);
+  background-size: 15px 15px;
+  transition:
+    color 0.5s,
+    background-color 0.5s;
+  line-height: 1.6;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
+    sans-serif;
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
+#app {
+  margin: 0 auto;
+  font-weight: normal;
+}
+
+html, body, #app {
+  height: 100%;
+}
+
+.bg-diagonal-dash {
+  background-image: linear-gradient(
+    45deg,
+    transparent 24%,
+    black 25%, 
+    black 26%, 
+    transparent 27%,
+    transparent 74%, 
+    black 75%, 
+    black 76%, 
+    transparent 77%
+  );
+  background-size: 10px 10px; /* Adjust dash size */
+  opacity: 0.2; /* Keep it subtle */
+}

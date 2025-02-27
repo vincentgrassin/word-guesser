@@ -19,9 +19,15 @@ const handleSubmit = () => {
   <form
     v-if="!(gameStatus === 'win' || gameStatus === 'loss')"
     @submit.prevent="handleSubmit"
-    class="rounded border p-4"
+    class="flex w-full flex-col items-end gap-4 border-t-4 p-4 sm:flex-row md:px-[10%] xl:px-[20%]"
   >
-    <BaseInputText variant="text" label="My bet" v-model="bet" placeholder="Type here" />
-    <BaseButton type="submit">Submit </BaseButton>
+    <BaseInputText
+      variant="text"
+      label="My bet"
+      v-model="bet"
+      placeholder="Type here"
+      class="w-full"
+    />
+    <BaseButton type="submit" class="w-fit">Submit </BaseButton>
   </form>
 </template>

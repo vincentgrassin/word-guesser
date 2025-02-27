@@ -3,7 +3,7 @@ import { computed, defineProps, type ButtonHTMLAttributes } from 'vue'
 
 const props = defineProps<
   {
-    variant?: 'primary' | 'secondary' | 'danger'
+    variant?: 'primary' | 'secondary'
   } & /** @vue-ignore */ ButtonHTMLAttributes
 >()
 

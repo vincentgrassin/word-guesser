@@ -17,7 +17,13 @@ const teamBets = computed(() => sortRoundMessages(state.user.userId, round)?.oth
 <template>
   <div class="flex justify-evenly gap-2 py-4">
     <div class="w-1/2">
-      <BetItem v-if="!!myBet" :bet="myBet.content" :date="myBet.date" :isRevealed="true" />
+      <BetItem
+        v-if="!!myBet"
+        :bet="myBet.content"
+        :date="myBet.date"
+        :isRevealed="true"
+        level="extreme"
+      />
     </div>
     <div class="w-1/2">
       <BetItem
@@ -26,6 +32,7 @@ const teamBets = computed(() => sortRoundMessages(state.user.userId, round)?.oth
         :bet="partnerBet.content"
         :date="partnerBet.date"
         :isRevealed="round.isComplete"
+        level="extreme"
       />
     </div>
   </div>

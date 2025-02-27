@@ -9,7 +9,7 @@ useUserConnect()
 </script>
 
 <template>
-  <main>
+  <main class="p-4 md:p-8">
     <div class="flex flex-col justify-between md:flex-row">
       <WelcomeArea />
       <SettingsArea />
