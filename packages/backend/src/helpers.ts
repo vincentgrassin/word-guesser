@@ -151,6 +151,7 @@ export const buildInitialGame = (
       createdBy: userId,
       createdAt: Date.now(),
       ...gameProperties,
+      name: gameProperties?.name || gameId,
     },
   }
 }

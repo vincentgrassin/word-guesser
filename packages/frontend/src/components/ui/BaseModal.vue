@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseText from '@/components/ui/BaseText.vue'
 
 const { isOpen, close } = defineProps<{
+  title?: string
   isOpen: boolean
   close?: () => void
 }>()
@@ -80,7 +82,7 @@ onBeforeUnmount(() => {
     >
       <div
         v-if="isOpen"
-        class="relative w-3/4 max-w-full rounded-lg border-[3px] border-black bg-background px-8 py-16 lg:w-1/2"
+        class="relative max-h-[95vh] w-3/4 max-w-full overflow-y-auto rounded-lg border-[3px] border-black bg-background px-8 py-16 lg:w-1/2"
       >
         <BaseButton
           v-if="!!close"
@@ -90,7 +92,10 @@ onBeforeUnmount(() => {
           @click="close"
           >&times;
         </BaseButton>
-        <slot />
+        <BaseText v-if="!!title" as="h2" :content="title" size="xl" class="absolute left-4 top-4" />
+        <div class="pt-8">
+          <slot />
+        </div>
       </div>
     </div>
   </Transition>

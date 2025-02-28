@@ -46,6 +46,7 @@ export type GameProperties = {
   type: GameType
   maxPlayers: number
   duration: number
+  name: string
 }
 
 export type GameSettings = {

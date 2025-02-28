@@ -18,7 +18,7 @@ const radioModel = defineModel<string | number>()
       v-model="radioModel"
       type="radio"
       :value="value"
-      class="h-5 w-5 cursor-pointer appearance-none rounded-full border-[1px] border-black bg-white checked:border-[3px] focus:outline-none"
+      class="h-5 w-5 cursor-pointer appearance-none rounded-full border-[1px] border-text bg-white checked:border-[3px] focus:outline-none"
     />
     <span>{{ label }}</span>
   </label>

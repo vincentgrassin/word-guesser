@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BetFormArea from '@/components/BetFormArea.vue'
+import ErrorView from '@/views/ErrorView.vue'
 import GameSettingsArea from '@/components/GameSettingsArea.vue'
 import PlayersArea from '@/components/PlayersArea.vue'
 import RoundsArea from '@/components/RoundsArea.vue'
@@ -47,8 +48,7 @@ watch(
       </div>
     </div>
     <div v-else>
-      Oops this game does not exist
-      <RouterLink :to="`/`"> Home </RouterLink>
+      <ErrorView />
     </div>
   </main>
 </template>

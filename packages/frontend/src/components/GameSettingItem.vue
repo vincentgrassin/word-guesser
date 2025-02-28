@@ -1,30 +1,29 @@
 <script setup lang="ts">
 import { computed, defineProps } from 'vue'
-import TimerIcon from '@/components/icons/TimerIcon.vue'
-import BulletIcon from '@/components/icons/BulletIcon.vue'
-import AcidIcon from '@/components/icons/AcidIcon.vue'
-import PlayerIcon from '@/components/icons/PlayerIcon.vue'
+import BaseIcon, { type IconName } from '@/components/ui/BaseIcon.vue'
 
-const props = defineProps<{
-  icon: 'bullet' | 'acid' | 'timer' | 'player'
+const { variant = 'primary' } = defineProps<{
+  icon: IconName
   value: string | number
+  variant?: 'primary' | 'secondary'
 }>()
 
-const iconMap = {
-  bullet: BulletIcon,
-  acid: AcidIcon,
-  timer: TimerIcon,
-  player: PlayerIcon,
-}
-
-const IconComponent = computed(() => iconMap[props.icon] || TimerIcon)
+const textClass = computed(() => {
+  switch (variant) {
+    case 'secondary':
+      return 'text-red animate-bounce'
+    case 'primary':
+    default:
+      return 'text-black'
+  }
+})
 </script>
 
 <template>
   <div
-    class="border-borderPrimary flex flex-row items-center justify-between rounded-lg border-2 bg-white p-4 text-black"
+    class="flex flex-row items-center justify-between gap-1 rounded-lg border-2 border-borderPrimary bg-white p-4 text-black"
   >
-    <component :is="IconComponent" width="24px" height="24px" color="#2c3e50" />
-    <span class="text-4xl font-bold">{{ value }}</span>
+    <BaseIcon width="24px" height="24px" color="#2c3e50" :name="icon" />
+    <span :class="['text-4xl font-bold', textClass]">{{ value }}</span>
   </div>
 </template>

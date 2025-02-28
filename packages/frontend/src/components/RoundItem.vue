@@ -23,6 +23,7 @@ const teamBets = computed(() => sortRoundMessages(state.user.userId, round)?.oth
         :date="myBet.date"
         :isRevealed="true"
         level="extreme"
+        position="left"
       />
     </div>
     <div class="w-1/2">
@@ -33,6 +34,7 @@ const teamBets = computed(() => sortRoundMessages(state.user.userId, round)?.oth
         :date="partnerBet.date"
         :isRevealed="round.isComplete"
         level="extreme"
+        position="right"
       />
     </div>
   </div>

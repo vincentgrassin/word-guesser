@@ -22,7 +22,7 @@ const submitForm = () => {
 </script>
 
 <template>
-  <form @submit.prevent="submitForm" class="flex flex-col">
+  <form @submit.prevent="submitForm" class="flex flex-col gap-4 md:gap-8">
     <BaseInputText label="User name" variant="text" v-model="form.userName" />
     <BaseButton type="submit">Submit</BaseButton>
   </form>

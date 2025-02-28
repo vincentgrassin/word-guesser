@@ -2,7 +2,6 @@
 import BaseText from '@/components/ui/BaseText.vue'
 import { useGamesStore } from '@/stores/useGamesStore'
 const { state } = useGamesStore()
-console.log('welcome', state)
 </script>
 
 <template>

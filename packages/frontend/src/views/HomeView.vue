@@ -14,8 +14,8 @@ useUserConnect()
       <WelcomeArea />
       <SettingsArea />
     </div>
-    <ul class="lg:grid-cols- mt-4 grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
-      <li v-for="(game, index) in state.games" :key="index">
+    <ul class="mt-4 grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <li v-for="(game, index) in state.games" :key="index" class="h-full min-h-[150px]">
         <GameItem :game="game" />
       </li>
     </ul>
