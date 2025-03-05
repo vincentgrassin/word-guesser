@@ -1,5 +1,5 @@
 import type { IconName } from '@/components/ui/BaseIcon.vue'
-import type { GameStatus } from '@word-guesser/shared'
+import type { GameStatus, ResponseMessage, Round } from '@word-guesser/shared'
 
 export function formatTime(timestamp: number) {
   const date = new Date(timestamp)
@@ -26,4 +26,45 @@ export const computeGameStatusIcon = (status: GameStatus): IconName => {
     case 'opened':
       return 'door'
   }
+}
+
+const getMaxScore = (messageId: string, round: Round) => {
+  if (!messageId) return 0
+  const score = round.messagesSimilarity.reduce(
+    (max, { sourceId, targetId, score }) =>
+      messageId && (sourceId === messageId || targetId === messageId) ? Math.max(max, score) : max,
+    0,
+  )
+  return score
+}
+
+type MessageWithScore = ResponseMessage & { score: number }
+
+export function sortRoundMessages(
+  userId: string,
+  round: Round,
+): {
+  me?: MessageWithScore
+  others: MessageWithScore[]
+} {
+  const messages = round.messages
+  const userMessage = messages.find((msg) => msg.userId === userId)
+  const otherMessages = messages.filter((msg) => msg.userId !== userId)
+
+  return {
+    me: userMessage
+      ? { ...userMessage, score: getMaxScore(userMessage.messageId, round) }
+      : undefined,
+    others: otherMessages.map((msg) => ({
+      ...msg,
+      score: getMaxScore(msg.messageId, round),
+    })),
+  }
+}
+
+export function computeScore(score: number) {
+  if (score < 0.4) return 'low'
+  if (score < 0.5) return 'medium'
+  if (score < 0.7) return 'high'
+  return 'extreme'
 }

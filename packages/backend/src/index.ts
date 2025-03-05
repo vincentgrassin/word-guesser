@@ -54,7 +54,7 @@ server.register(async function (fastify) {
       players.push(newPlayer)
       broadcastToOne(newPlayer, 'LIST_GAMES', games)
 
-      socket.on('message', (m: Buffer) => {
+      socket.on('message', async (m: Buffer) => {
         const message = parseMessage(m)
         const { event, gameId, content } = message
         const game = findGame(gameId, games)
@@ -83,8 +83,9 @@ server.register(async function (fastify) {
                 const responseMessage = {
                   ...message,
                   userId,
+                  messageId: generateUID(),
                 }
-                updateRounds(game, responseMessage)
+                await updateRounds(game, responseMessage)
                 updateGameStatus(game)
                 updateGameStartTime(game)
                 broadcast(players, event, game)

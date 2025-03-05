@@ -10,7 +10,10 @@ import {
   ResponseMessage,
   SocketEvent,
   WebSocket,
+  Round,
+  MessageSimilarity,
 } from '@word-guesser/shared'
+import { getSemanticScore } from './semantic.js'
 
 export const WebSocketState = {
   CONNECTING: 0,
@@ -58,51 +61,70 @@ export const updatePlayer = (rawPlayerSettings: string | undefined, player: Play
   return player
 }
 
-export const updateRounds = (game: Game, message: ResponseMessage) => {
+export const updateRounds = async (game: Game, message: ResponseMessage) => {
   const rounds = [...game.rounds]
 
   if (!game.players) {
-    console.error('Invalid player')
+    console.error('[ERROR]: Invalid player')
     return rounds
   }
   const isPlayer = game.players.find((p) => p.userId === message.userId)
 
   if (!isPlayer) {
-    console.error('Message sender is not a recognized player in this game')
+    console.error('[ERROR]: Message sender is not a recognized player in this game')
     return rounds
   }
 
   if (rounds.length === 0) {
-    // No rounds exist, create the first round
-    rounds.push({
-      roundId: 1,
-      isComplete: false,
-      messages: [message],
-    })
+    rounds.push(createRound(1, message))
   } else {
     const currentRound = rounds[rounds.length - 1]
     const playersNumber = game.settings.maxPlayers
+
     if (currentRound.messages.length === playersNumber) {
-      // All players have sent messages, start a new round
-      rounds.push({
-        roundId: currentRound.roundId + 1,
-        isComplete: false,
-        messages: [message],
-      })
+      rounds.push(createRound(currentRound.roundId + 1, message))
     } else {
-      // There's an ongoing round, update the appropriate player
-      const playerMessageIndex = currentRound.messages.findIndex((m) => m.userId === message.userId)
-      if (playerMessageIndex === -1) {
-        currentRound.messages.push(message)
-      } else {
-        currentRound.messages[playerMessageIndex] = message
-      }
-      if (currentRound.messages.length === playersNumber) {
-        currentRound.isComplete = true
+      updateCurrentRound(currentRound, message, playersNumber)
+      if (currentRound.isComplete) {
+        currentRound.messagesSimilarity = await calculateMessageSimilarities(currentRound)
       }
     }
   }
   game.rounds = rounds
+}
+
+const createRound = (roundId: number, message: ResponseMessage): Round => {
+  return {
+    roundId,
+    isComplete: false,
+    messages: [message],
+    messagesSimilarity: [],
+  }
+}
+
+const updateCurrentRound = (round: Round, message: ResponseMessage, playersNumber: number) => {
+  const playerMessageIndex = round.messages.findIndex((m) => m.userId === message.userId)
+  if (playerMessageIndex === -1) {
+    round.messages.push(message)
+  } else {
+    round.messages[playerMessageIndex] = message
+  }
+  if (round.messages.length === playersNumber) {
+    round.isComplete = true
+  }
+}
+
+const calculateMessageSimilarities = async (round: Round): Promise<MessageSimilarity[]> => {
+  let similarities: MessageSimilarity[] = []
+  for (let i = 0; i < round.messages.length - 1; i++) {
+    const sourceMessage = round.messages[i]
+    const targetMessages = round.messages.slice(i + 1)
+    const semanticScores = await getSemanticScore(sourceMessage, targetMessages)
+    if (semanticScores) {
+      similarities = [...similarities, ...semanticScores]
+    }
+  }
+  return similarities
 }
 
 export const updateGameStatus = (game: Game) => {

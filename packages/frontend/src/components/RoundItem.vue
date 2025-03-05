@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { useGamesStore } from '@/stores/useGamesStore'
 
-import { sortRoundMessages, type Round } from '@word-guesser/shared'
+import { type Round } from '@word-guesser/shared'
 import { computed } from 'vue'
 import BetItem from './BetItem.vue'
+import { sortRoundMessages } from '@/utils/helpers'
 const { state } = useGamesStore()
 
 const { round } = defineProps<{
@@ -22,18 +23,18 @@ const teamBets = computed(() => sortRoundMessages(state.user.userId, round)?.oth
         :bet="myBet.content"
         :date="myBet.date"
         :isRevealed="true"
-        level="extreme"
+        :score="myBet.score"
         position="left"
       />
     </div>
-    <div class="w-1/2">
+    <div class="flex w-1/2 flex-col gap-4">
       <BetItem
         v-for="(partnerBet, index) in teamBets"
         :key="index"
         :bet="partnerBet.content"
         :date="partnerBet.date"
         :isRevealed="round.isComplete"
-        level="extreme"
+        :score="partnerBet.score"
         position="right"
       />
     </div>

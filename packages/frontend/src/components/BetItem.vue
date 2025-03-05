@@ -1,16 +1,21 @@
 <script lang="ts" setup>
-import { formatTime } from '@/utils/helpers'
+import { computeScore, formatTime } from '@/utils/helpers'
 import { computed } from 'vue'
 
-const { date, level, position } = defineProps<{
+const {
+  date,
+  score = 0,
+  position,
+} = defineProps<{
   bet: string | undefined
   date?: number
   isRevealed: boolean
-  level?: 'low' | 'medium' | 'high' | 'extreme'
+  score?: number
   position: 'left' | 'right'
 }>()
 
 const levelClass = computed(() => {
+  const level = computeScore(score)
   switch (level) {
     case 'medium':
       return 'border-yellow shadow-yellow'

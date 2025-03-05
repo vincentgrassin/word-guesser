@@ -34,12 +34,19 @@ export type RequestMessage = {
   date: number
 }
 
-export type ResponseMessage = RequestMessage & { userId: string }
+export type ResponseMessage = RequestMessage & { userId: string; messageId: string }
+
+export type MessageSimilarity = {
+  sourceId: string
+  targetId: string
+  score: number
+}
 
 export type Round = {
   roundId: number
   messages: ResponseMessage[]
   isComplete: boolean
+  messagesSimilarity: MessageSimilarity[]
 }
 
 export type GameProperties = {
@@ -79,19 +86,6 @@ export type WebSocket = WsWebSocket
 
 export const generateUID = () => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-}
-
-export function sortRoundMessages(
-  userId: string,
-  round: Round,
-): {
-  me?: ResponseMessage
-  others: ResponseMessage[]
-} {
-  const messages = round.messages
-  const userMessage = messages.find((msg) => msg.userId === userId)
-  const otherMessages = messages.filter((msg) => msg.userId !== userId)
-  return { me: userMessage, others: otherMessages }
 }
 
 export function sortPlayers(
