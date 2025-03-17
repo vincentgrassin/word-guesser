@@ -32,7 +32,7 @@ const submitForm = () => {
     <BaseInputText variant="number" label="Duration" v-model="gameSettings.duration" />
     <BaseRadioGroup label="Type">
       <BaseRadioItem label="Basic" value="basic" v-model="gameSettings.type" />
-      <BaseRadioItem label="Solo" value="solo" v-model="gameSettings.type" />
+      <BaseRadioItem label="Solo" value="solo" v-model="gameSettings.type" disabled />
     </BaseRadioGroup>
     <BaseButton type="submit">Submit</BaseButton>
   </form>

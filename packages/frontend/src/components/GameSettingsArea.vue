@@ -46,21 +46,23 @@ watch(gameTimer, (newTimer) => {
     </BaseModal>
     <div class="flex flex-row gap-2 md:flex-col">
       <BaseText as="h2" :content="game.settings.name" size="2xl" />
-      <ActionsArea :gameId="gameId" />
+      <ActionsArea :game="game" />
     </div>
     <div class="grid w-full grid-cols-2 justify-between gap-1 md:grid-cols-1 md:py-4">
       <GameSettingItem
+        label="players"
         :value="`${game.players.length} / ${game.settings.maxPlayers}`"
         icon="player"
         :variant="game.players.length === game.settings.maxPlayers ? 'primary' : 'secondary'"
       />
-      <GameSettingItem :value="game.rounds.length" icon="bullet" />
+      <GameSettingItem :value="game.rounds.length" icon="bullet" label="rounds" />
       <GameSettingItem
         :value="formatDuration(gameTimer)"
         icon="timer"
+        label="timer"
         :variant="gameTimer < 30 * 1000 ? 'secondary' : 'primary'"
       />
-      <GameSettingItem :value="game.settings.type" icon="acid" />
+      <GameSettingItem :value="game.settings.type" icon="acid" label="mode" />
     </div>
   </div>
 </template>

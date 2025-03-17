@@ -6,6 +6,7 @@ const { variant = 'primary' } = defineProps<{
   icon: IconName
   value: string | number
   variant?: 'primary' | 'secondary'
+  label: string
 }>()
 
 const textClass = computed(() => {
@@ -23,7 +24,10 @@ const textClass = computed(() => {
   <div
     class="flex flex-row items-center justify-between gap-1 rounded-lg border-2 border-borderPrimary bg-white p-4 text-black"
   >
-    <BaseIcon width="24px" height="24px" color="#2c3e50" :name="icon" />
+    <div class="flex flex-col items-center justify-center gap-1">
+      <BaseIcon width="24px" height="24px" color="#2c3e50" :name="icon" />
+      <p class="text-xs uppercase">{{ label }}</p>
+    </div>
     <span :class="['text-4xl font-bold', textClass]">{{ value }}</span>
   </div>
 </template>
