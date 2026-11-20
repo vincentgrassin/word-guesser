@@ -18,6 +18,13 @@ type GamesState = {
   user: User
 }
 
+// In production the backend is served behind the same address as the page (see Caddyfile)
+const webSocketBaseUrl = (): string => {
+  if (import.meta.env.VITE_WEB_SOCKET_URL) return import.meta.env.VITE_WEB_SOCKET_URL
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.host}`
+}
+
 export const useGamesStore = defineStore('games', () => {
   const state: GamesState = reactive({
     games: [],
@@ -30,7 +37,7 @@ export const useGamesStore = defineStore('games', () => {
 
   const connect = (userId: string, userName: string): Promise<void> => {
     return new Promise((resolve, reject) => {
-      const wsUrl = `${import.meta.env.VITE_WEB_SOCKET_URL}/connect/${userId}?userName=${userName}`
+      const wsUrl = `${webSocketBaseUrl()}/connect/${userId}?userName=${userName}`
       if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
         state.socket = new WebSocket(wsUrl)
 

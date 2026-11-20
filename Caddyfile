@@ -1,0 +1,17 @@
+# Single entry point of the production stack.
+# SITE_ADDRESS defaults to ":80" (plain HTTP on any address, e.g. the server IP).
+# Set it to a domain name (e.g. word-guesser.example.com) to get automatic HTTPS.
+
+{$SITE_ADDRESS::80} {
+	encode gzip
+
+	# WebSocket connections go to the backend
+	handle /connect/* {
+		reverse_proxy backend:3000
+	}
+
+	# Everything else is the frontend
+	handle {
+		reverse_proxy frontend:80
+	}
+}

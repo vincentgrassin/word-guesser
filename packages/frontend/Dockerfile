@@ -19,9 +19,7 @@ EXPOSE 5173
 CMD ["pnpm", "dev"]
 
 FROM dev AS build
-# Vite inlines VITE_* variables at build time
-ARG VITE_WEB_SOCKET_URL=ws://localhost:3000
-ENV VITE_WEB_SOCKET_URL=${VITE_WEB_SOCKET_URL}
+# No VITE_WEB_SOCKET_URL: the app connects to the WebSocket on its own address
 RUN pnpm build-only
 
 FROM nginx:1.27-alpine AS prod

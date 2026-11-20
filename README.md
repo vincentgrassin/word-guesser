@@ -60,7 +60,7 @@ Frontend on http://localhost:5173, backend on http://localhost:3000.
 
 ### Production
 
-Built images with no mounted sources: the backend runs the compiled code, and nginx serves the frontend.
+Built images with no mounted sources. [Caddy](https://caddyserver.com) is the only entry point: it sends `/connect/*` (WebSocket) to the backend and everything else to the frontend (nginx). The backend and frontend publish no ports.
 
 ```sh
 pnpm docker:start-prod    # builds and starts in the background
@@ -68,9 +68,15 @@ pnpm docker:logs-prod
 pnpm docker:stop-prod
 ```
 
-Frontend on http://localhost:8080, backend on http://localhost:3000.
+Everything is on http://localhost. The frontend opens its WebSocket on the address it was loaded from, so the same images work on any host.
 
-The WebSocket URL is built into the frontend. To use another one, set `VITE_WEB_SOCKET_URL` in your shell before `pnpm docker:start-prod`.
+For HTTPS on a domain, point the domain at the server and set `SITE_ADDRESS` (in a `.env` file at the repo root, or in the shell) before starting:
+
+```sh
+SITE_ADDRESS=word-guesser.example.com
+```
+
+Caddy then gets and renews the certificate automatically.
 
 ### Shell into a container
 
