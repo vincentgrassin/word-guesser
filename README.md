@@ -78,6 +78,8 @@ SITE_ADDRESS=word-guesser.example.com
 
 Caddy then gets and renews the certificate automatically.
 
+The server setup and the update procedure are described in [docs/deployment.md](docs/deployment.md).
+
 ### Shell into a container
 
 ```sh

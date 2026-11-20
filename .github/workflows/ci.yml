@@ -1,5 +1,6 @@
-# Continuous integration: checks that the project still builds.
-# Runs on every push to master and on every pull request.
+# Continuous integration and deployment.
+# - On every pull request: checks that the project still builds.
+# - On every push to master: same checks, then deploys to the server if they pass.
 # Results appear in the "Actions" tab of the GitHub repository.
 
 name: CI
@@ -52,3 +53,30 @@ jobs:
 
       - name: Build frontend image
         run: docker build --target prod -f packages/frontend/Dockerfile .
+
+  # Job 3: deploy to the server (see docs/deployment.md)
+  deploy:
+    needs: [build, docker] # only runs if both checks pass
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    concurrency: # one deployment at a time, never cancelled halfway
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Set up the SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy
+        # The key is restricted on the server to a single command
+        # (git pull + docker compose up), so no command is sent here.
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST"

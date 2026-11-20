@@ -1,0 +1,99 @@
+# Deployment
+
+The game runs on a single VPS with Docker. This page describes what is on the server and how to update it.
+
+## The server
+
+| | |
+| --- | --- |
+| Host | Contabo Cloud VPS (EU), Ubuntu 24.04 LTS |
+| Access | SSH as the admin user, **SSH key only**: root login and passwords are disabled |
+| Firewall | `ufw`, open ports: 22 (SSH), 80 (HTTP), 443 (HTTPS) |
+| Updates | Security updates install automatically (`unattended-upgrades`) |
+| Docker | Docker Engine + Compose plugin, container logs capped at 3 × 10 MB (`/etc/docker/daemon.json`) |
+| App | Cloned in `~/word-guesser`, started with `docker-compose.prod.yml` |
+| Address | `http://<SERVER_IP>`, no domain or HTTPS yet |
+
+The admin user is in the `sudo` and `docker` groups. If SSH stops working, use the VNC console in the Contabo panel with the root password.
+
+## How the app runs
+
+```
+Internet ──▶ caddy (:80, :443) ──┬─ /connect/* ──▶ backend  (Node, :3000)
+                                 └─ everything else ─▶ frontend (nginx, :80)
+```
+
+- **caddy** is the only container with published ports. It routes requests and will handle HTTPS once there is a domain.
+- **backend** runs the game and its WebSockets. It reads `packages/backend/.env` when it starts. That file exists only on the server and is not in git.
+- **frontend** serves the built Vue app. It needs no `.env`: it opens its WebSocket on the address the page was loaded from.
+
+All three restart automatically after a crash or a server reboot (`restart: unless-stopped`).
+
+> Docker bypasses `ufw` for published ports. Never add `ports:` to `backend`, `frontend` or a database: route traffic through Caddy instead.
+
+## Update the game
+
+### Automatically
+
+Every push to `master` deploys, if the `build` and `docker` checks of [the CI workflow](../.github/workflows/ci.yml) pass. Follow it in the repository's **Actions** tab.
+
+The `deploy` job connects over SSH with a key dedicated to GitHub. On the server, that key is restricted in `~/.ssh/authorized_keys` to a single command, the manual update below. It can't open a shell or run anything else.
+
+The job uses four repository secrets (**Settings → Secrets and variables → Actions**):
+
+| Secret | Content |
+| --- | --- |
+| `SSH_HOST` | The server IP |
+| `SSH_USER` | The admin user |
+| `SSH_PRIVATE_KEY` | The private half of the deploy key |
+| `SSH_KNOWN_HOSTS` | The server's host key line, from `ssh-keyscan -t ed25519 <SERVER_IP>` |
+
+### By hand
+
+On the server:
+
+```sh
+cd ~/word-guesser
+git pull
+docker compose -f docker-compose.prod.yml up --build -d
+docker image prune -f
+```
+
+`up --build -d` rebuilds the images and replaces only the containers that changed. `image prune` deletes the old images to save disk space.
+
+**Games in progress are lost on every backend restart**, because they live in memory only.
+
+### Roll back
+
+The clean way is to revert the faulty commit on GitHub (`git revert`, then push to `master`): the pipeline deploys the fix like any other change.
+
+For an emergency fix on the server:
+
+```sh
+cd ~/word-guesser
+git log --oneline -5                 # find the last good commit
+git checkout <commit>
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+Go back to the latest version with `git checkout master && git pull`. Automatic deployments fail until you do, because `git pull` doesn't work outside a branch.
+
+## Day-to-day commands
+
+Run from `~/word-guesser`. The `-f docker-compose.prod.yml` is required in every command.
+
+| Task | Command |
+| --- | --- |
+| Status of the containers | `docker compose -f docker-compose.prod.yml ps` |
+| Follow the logs | `docker compose -f docker-compose.prod.yml logs -f` (add `backend` for one service) |
+| Restart the backend | `docker compose -f docker-compose.prod.yml restart backend` |
+| Stop everything | `docker compose -f docker-compose.prod.yml down` |
+| Disk usage | `df -h` and `docker system df` |
+| Docker engine logs | `sudo journalctl -u docker` |
+
+After changing `packages/backend/.env`, restart the backend for the change to apply.
+
+## Not set up yet
+
+- **Domain and HTTPS**: point the domain at the server, add `SITE_ADDRESS=<domain>` to a `.env` file in `~/word-guesser`, then run the update command. Caddy gets the certificate automatically.
+- **Backups**: nothing to back up yet, as there is no database.
