@@ -69,9 +69,12 @@ jobs:
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          # tr removes Windows line endings that copy-pasting can add to secrets
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          echo "Server key expected by this job:"
+          ssh-keygen -lf ~/.ssh/known_hosts
 
       - name: Deploy
         # The key is restricted on the server to a single command
@@ -79,4 +82,4 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
-        run: ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST"
+        run: ssh -T -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST"
