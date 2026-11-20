@@ -10,6 +10,8 @@ export default defineConfig({
   server: {
     host: '0.0.0.0', // Allow access from external devices (including your host)
     port: 5173, // Default port for Vite
+    // In Docker on Windows, file events from the host don't reach the container
+    watch: { usePolling: process.env.VITE_USE_POLLING === 'true' },
   },
   preview: {
     port: 5173,

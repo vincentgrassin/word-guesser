@@ -8,11 +8,21 @@
     "dev-frontend": " pnpm --filter frontend dev",
     "install-backend": "pnpm install --filter backend",
     "dev-backend": "pnpm --filter backend dev",
-    "build-shared": "pnpm --filter @word-guesser/shared build"
+    "build-shared": "pnpm --filter @word-guesser/shared build",
+    "docker:start": "docker compose up -V",
+    "docker:start-build": "docker compose up --build -V",
+    "docker:stop": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:sh-frontend": "docker compose exec frontend sh",
+    "docker:sh-backend": "docker compose exec backend sh",
+    "docker:start-prod": "docker compose -f docker-compose.prod.yml up --build -d",
+    "docker:stop-prod": "docker compose -f docker-compose.prod.yml down",
+    "docker:logs-prod": "docker compose -f docker-compose.prod.yml logs -f"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "packageManager": "pnpm@10.24.0",
   "devDependencies": {
     "prettier": "^3.4.2"
   }

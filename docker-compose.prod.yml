@@ -1,0 +1,28 @@
+# Production stack: built images, no source mounts.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile
+      target: prod
+    env_file: packages/backend/.env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+      target: prod
+      args:
+        VITE_WEB_SOCKET_URL: ${VITE_WEB_SOCKET_URL:-ws://localhost:3000}
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
