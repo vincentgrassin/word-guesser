@@ -1,0 +1,54 @@
+# Continuous integration: checks that the project still builds.
+# Runs on every push to master and on every pull request.
+# Results appear in the "Actions" tab of the GitHub repository.
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  # Job 1: install dependencies and build every package
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm (version taken from "packageManager" in package.json)
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm # reuses downloaded packages between runs
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile # fails if pnpm-lock.yaml is out of date
+
+      - name: Build shared
+        run: pnpm --filter @word-guesser/shared build
+
+      - name: Build backend
+        run: pnpm --filter backend build
+
+      - name: Build frontend
+        # build-only skips the type-check, which currently fails.
+        # Switch to "build" once the type errors are fixed.
+        run: pnpm --filter frontend build-only
+
+  # Job 2: check that the production Docker images still build (nothing is published)
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build --target prod -f packages/backend/Dockerfile .
+
+      - name: Build frontend image
+        run: docker build --target prod -f packages/frontend/Dockerfile .

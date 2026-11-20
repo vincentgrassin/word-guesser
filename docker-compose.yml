@@ -1,35 +1,36 @@
-version: "3.9"
+# Development stack: hot reload on mounted sources.
+# Changes to packages/shared or to dependencies need a rebuild (make start-build).
 
 services:
   backend:
     build:
-      context: ./packages/backend # Point to the backend folder
-      dockerfile: Dockerfile
-      args:
-        NODE_ENV: ${NODE_ENV:-development} # Use production by default
-    volumes:
-      - ./packages/backend:/app # Mount the backend directory for hot-reloading
-      - /app/node_modules # Prevent overwriting node_modules in the container
-    ports:
-      - "3000:3000" # Expose Fastify's port
+      context: .
+      dockerfile: packages/backend/Dockerfile
+      target: dev
+    # -L: polling, file events from the Windows host don't reach the container
+    command: pnpm exec nodemon -L --watch src --exec tsx src/index.ts
+    env_file: packages/backend/.env
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
+      HOST: 0.0.0.0
+      PORT: 3000
+    volumes:
+      - ./packages/backend:/app/packages/backend
+      - /app/packages/backend/node_modules
+    ports:
+      - "3000:3000"
 
   frontend:
     build:
-      context: ./packages/frontend # Point to the frontend folder
-      dockerfile: Dockerfile
-      args:
-        NODE_ENV: ${NODE_ENV:-development}
-    volumes:
-      - ./packages/frontend:/app # Mount the frontend directory for hot-reloading
-      - /app/node_modules # Prevent overwriting node_modules in the container
-    ports:
-      - "5173:5173" # Expose the Vite development server port
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+      target: dev
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - VITE_API_URL=http://localhost:3000 # API URL for the frontend to connect to the backend
-
-networks:
-  default:
-    driver: bridge
+      VITE_WEB_SOCKET_URL: ws://localhost:3000
+      VITE_USE_POLLING: "true"
+    volumes:
+      - ./packages/frontend:/app/packages/frontend
+      - /app/packages/frontend/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
