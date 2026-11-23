@@ -116,6 +116,31 @@ describe('Game page', () => {
     expect(app.wrapper.find('form').exists()).toBe(false)
   })
 
+  it('leaves ending the game to the server when time runs out', async () => {
+    const duration = 120_000
+    const almostOver = buildGame({
+      gameId: 'g1',
+      players: [alice, bob],
+      settings: { name: 'Duo', status: 'started', duration, startedAt: Date.now() - duration + 1500 },
+    })
+    fakeGameServer.games = [almostOver]
+    app = await renderApp('/game/g1')
+
+    // Wait for the countdown to really reach zero (the timer reads 0 before the game loads)
+    await vi.waitFor(() => expect(app.wrapper.text()).toContain('00:01'))
+    // The timer ticks every second from ~1.5s: it holds exactly 0 after two ticks
+    await new Promise((resolve) => setTimeout(resolve, 2200))
+    expect(app.wrapper.text()).toContain('00:00')
+
+    fakeGameServer.send('END_GAME', {
+      ...almostOver,
+      settings: { ...almostOver.settings, status: 'loss' },
+    })
+    await vi.waitFor(() => expect(app.wrapper.text()).toContain('You lose'))
+    // Checked last, so that a message sent at zero has had time to arrive
+    expect(fakeGameServer.receivedEvents('END_GAME')).toEqual([])
+  })
+
   it('tells the player when the game does not exist', async () => {
     app = await renderApp('/game/unknown')
 

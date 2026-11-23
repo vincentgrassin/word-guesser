@@ -38,6 +38,24 @@ export const GAME_EXPIRY = {
   inactive: 30 * 60_000,
 } as const
 
+// The IP address rate limits are keyed on. In production the backend is only
+// reachable through Caddy, which replaces any X-Forwarded-For sent by the client
+// with the real client address: the last entry is therefore trustworthy.
+export const clientAddress = (
+  forwardedFor: string | string[] | undefined,
+  socketAddress: string | undefined,
+): string => {
+  const header = Array.isArray(forwardedFor) ? forwardedFor.join(',') : forwardedFor
+  const lastHop = header?.split(',').pop()?.trim()
+  return lastHop || socketAddress || 'unknown'
+}
+
+// The clock starts when the first round is complete (see updateGameStartTime).
+export const isOutOfTime = (game: Game, now: number) => {
+  const { status, startedAt, duration } = game.settings
+  return status === 'started' && startedAt !== undefined && now >= startedAt + duration
+}
+
 export const isGameExpired = (game: Game, lastActivityAt: number, now: number) => {
   const isFinished = game.settings.status === 'win' || game.settings.status === 'loss'
   const maxIdle = isFinished ? GAME_EXPIRY.finished : GAME_EXPIRY.inactive
@@ -46,12 +64,12 @@ export const isGameExpired = (game: Game, lastActivityAt: number, now: number) =
 
 const DEFAULT_GAME_PROPERTIES = { type: 'basic', maxPlayers: 2, duration: 2 * 60_000 } as const
 
+// END_GAME is not here: only the server ends a game (win or time out).
 const CLIENT_EVENTS = new Set<SocketEvent>([
   'CREATE_GAME',
   'JOIN_GAME',
   'PLAY_ROUND',
   'QUIT_GAME',
-  'END_GAME',
   'DELETE_GAME',
   'UPDATE_PLAYER',
 ])
@@ -270,10 +288,6 @@ export const canPlayRound = (game: Game) => game.settings.status === 'started'
 
 export const canDeleteGame = (userId: string, game: Game) =>
   game.settings.createdBy === userId || isPlayerInGame(userId, game)
-
-// A win is decided by the server; a client can only report that time ran out.
-export const canEndGame = (userId: string, game: Game, status: string | undefined) =>
-  status === 'loss' && game.settings.status === 'started' && isPlayerInGame(userId, game)
 
 export const broadcastToOne = (player: Player, event: SocketEvent, payload: unknown) => {
   player.socket.send(JSON.stringify({ event, payload }))

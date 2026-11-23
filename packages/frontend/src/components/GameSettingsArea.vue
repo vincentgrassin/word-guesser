@@ -4,22 +4,17 @@ import { useGamesStore } from '@/stores/useGamesStore'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseIcon from '@/components/ui/BaseIcon.vue'
 import ActionsArea from '@/components/ActionsArea.vue'
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import BaseLink from '@/components/ui/BaseLink.vue'
 import BaseText from '@/components/ui/BaseText.vue'
 import { formatDuration, computeGameStatusIcon } from '@/utils/helpers'
 import GameSettingItem from '@/components/GameSettingItem.vue'
 
 const { gameId, class: classProp } = defineProps<{ gameId: string; class?: string }>()
-const { state, endGame, deleteGame } = useGamesStore()
+const { state, deleteGame } = useGamesStore()
 const game = computed(() => state.games.find((g) => g.gameId === gameId))
+// Display only: the server ends the game when time runs out (END_GAME)
 const { gameTimer } = useGameTimer(game)
-
-watch(gameTimer, (newTimer) => {
-  if (newTimer === 0) {
-    endGame(gameId, 'loss')
-  }
-})
 </script>
 
 <template>

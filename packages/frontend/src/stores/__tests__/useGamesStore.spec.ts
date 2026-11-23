@@ -58,9 +58,8 @@ describe('useGamesStore', () => {
     store.createGame({ type: 'basic', maxPlayers: 3, duration: 60_000, name: 'Trio' })
     store.joinGame('g1')
     store.playRound('g1', 'apple')
-    store.endGame('g1', 'loss')
 
-    await vi.waitFor(() => expect(fakeGameServer.received).toHaveLength(4))
+    await vi.waitFor(() => expect(fakeGameServer.received).toHaveLength(3))
     expect(fakeGameServer.received).toEqual([
       {
         event: 'CREATE_GAME',
@@ -69,7 +68,6 @@ describe('useGamesStore', () => {
       },
       { event: 'JOIN_GAME', gameId: 'g1', date: expect.any(Number) },
       { event: 'PLAY_ROUND', gameId: 'g1', content: 'apple', date: expect.any(Number) },
-      { event: 'END_GAME', gameId: 'g1', content: 'loss', date: expect.any(Number) },
     ])
   })
 

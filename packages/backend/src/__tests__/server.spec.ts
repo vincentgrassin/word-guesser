@@ -12,23 +12,30 @@ type Client = {
   send: (event: SocketEvent, fields?: { gameId?: string; content?: string }) => void
   next: <T = unknown>(event: SocketEvent) => Promise<T>
   close: () => Promise<void>
+  // Resolves with the close code when the server closes the connection
+  closedByServer: Promise<number>
 }
 
 async function connect(server: FastifyInstance, userId: string): Promise<Client> {
   const inbox: SocketPayload[] = []
   let wakeUp: (() => void) | undefined
+  let onClose: (code: number) => void = () => {}
+  const closedByServer = new Promise<number>((resolve) => (onClose = resolve))
 
   const ws = await server.injectWS(`/connect/${userId}?userName=${userId}-name`, undefined, {
     // Listen before the connection opens: the server sends LIST_GAMES straight away.
-    onInit: (socket) =>
+    onInit: (socket) => {
       socket.on('message', (data) => {
         inbox.push(JSON.parse(data.toString()))
         wakeUp?.()
-      }),
+      })
+      socket.on('close', (code) => onClose(code))
+    },
   })
 
   return {
     ws,
+    closedByServer,
     send: (event, fields = {}) => ws.send(JSON.stringify({ event, date: Date.now(), ...fields })),
     async next<T>(event: SocketEvent) {
       for (;;) {
@@ -45,16 +52,28 @@ async function connect(server: FastifyInstance, userId: string): Promise<Client>
   }
 }
 
-const twoPlayerGame = JSON.stringify({ type: 'basic', maxPlayers: 2, duration: 120_000, name: 'Duo' })
+const MINUTE = 60_000
+const twoPlayerGame = JSON.stringify({ type: 'basic', maxPlayers: 2, duration: 2 * MINUTE, name: 'Duo' })
+const longGame = JSON.stringify({ type: 'basic', maxPlayers: 2, duration: 30 * MINUTE, name: 'Long' })
 
 describe('game server (WebSocket)', () => {
   let server: FastifyInstance
   let alice: Client
   let bob: Client
 
+  // Restart the server with a fake clock, so tests can jump forward in time.
+  async function restartServer(options?: Parameters<typeof buildServer>[0]) {
+    await server.close()
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    server = buildServer(options)
+    await server.ready()
+    alice = await connect(server, 'alice')
+    bob = await connect(server, 'bob')
+  }
+
   // Alice creates a 2-player game, then both players join it.
-  async function startGame(): Promise<Game> {
-    alice.send('CREATE_GAME', { content: twoPlayerGame })
+  async function startGame(content = twoPlayerGame): Promise<Game> {
+    alice.send('CREATE_GAME', { content })
     const { gameId } = await alice.next<Game>('CREATE_GAME')
     await bob.next('CREATE_GAME')
 
@@ -89,6 +108,7 @@ describe('game server (WebSocket)', () => {
   })
 
   afterEach(async () => {
+    vi.useRealTimers()
     await server.close()
   })
 
@@ -167,14 +187,6 @@ describe('game server (WebSocket)', () => {
     const game = await alice.next<Game>('QUIT_GAME')
 
     expect(game.players.map((p) => p.userId)).toEqual(['alice'])
-  })
-
-  it('ends the game with the status sent by the client', async () => {
-    const { gameId } = await startGame()
-
-    alice.send('END_GAME', { gameId, content: 'loss' })
-
-    expect((await bob.next<Game>('END_GAME')).settings.status).toBe('loss')
   })
 
   it('deletes a game for everyone', async () => {
@@ -341,20 +353,11 @@ describe('game server (WebSocket)', () => {
       expect(games.map((g) => g.gameId)).toEqual([gameId])
     })
 
-    it('only lets a player of the game end it', async () => {
-      const { gameId } = await startGame()
-      const carol = await connect(server, 'carol')
-
-      carol.send('END_GAME', { gameId, content: 'loss' })
-      expect(await carol.next('ERROR')).toEqual(expect.any(String))
-
-      const [game] = await gamesSeenByNewcomer()
-      expect(game.settings.status).toBe('started')
-    })
-
-    it('does not let a client declare a win', async () => {
+    it('does not let a client end a game, even a player', async () => {
       const { gameId } = await startGame()
 
+      alice.send('END_GAME', { gameId, content: 'loss' })
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
       alice.send('END_GAME', { gameId, content: 'win' })
       expect(await alice.next('ERROR')).toEqual(expect.any(String))
 
@@ -374,23 +377,138 @@ describe('game server (WebSocket)', () => {
     })
   })
 
-  describe('cleanup of old games', () => {
-    const MINUTE = 60_000
-
-    // Restart the server with a fake clock, so tests can jump forward in time.
-    async function restartServer(options?: Parameters<typeof buildServer>[0]) {
-      await server.close()
-      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
-      server = buildServer(options)
-      await server.ready()
-      alice = await connect(server, 'alice')
-      bob = await connect(server, 'bob')
-    }
-
-    afterEach(() => {
-      vi.useRealTimers()
+  describe('game clock', () => {
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
     })
 
+    it('ends the game as a loss for everyone when time runs out', async () => {
+      await restartServer()
+      const { gameId } = await startGame()
+      // The clock starts once the first round is complete
+      await playRound(gameId, 'apple', 'pear')
+
+      vi.advanceTimersByTime(2 * MINUTE + 1000)
+
+      expect((await alice.next<Game>('END_GAME')).settings.status).toBe('loss')
+      expect((await bob.next<Game>('END_GAME')).settings.status).toBe('loss')
+    })
+
+    it('does not end the game before time runs out', async () => {
+      await restartServer()
+      const { gameId } = await startGame()
+      await playRound(gameId, 'apple', 'pear')
+
+      vi.advanceTimersByTime(MINUTE)
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.settings.status).toBe('started')
+    })
+
+    it('does not turn a won game into a loss', async () => {
+      await restartServer()
+      const { gameId } = await startGame()
+      await playRound(gameId, 'apple', 'apple')
+
+      vi.advanceTimersByTime(3 * MINUTE)
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.settings.status).toBe('win')
+    })
+
+    it('refuses a round sent after time ran out', async () => {
+      await restartServer()
+      const { gameId } = await startGame()
+      await playRound(gameId, 'apple', 'pear')
+
+      // Move the clock without running the timers: the game is not ended yet
+      vi.setSystemTime(Date.now() + 3 * MINUTE)
+      alice.send('PLAY_ROUND', { gameId, content: 'late' })
+
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
+    })
+  })
+
+  describe('rate limits', () => {
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    it('refuses messages sent faster than allowed', async () => {
+      await restartServer({ messageRate: { perSecond: 1, burst: 2 } })
+
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+
+      expect(await alice.next('ERROR')).toMatch(/too many messages/i)
+      expect(await gamesSeenByNewcomer()).toHaveLength(2)
+    })
+
+    it('accepts messages again once the player slowed down', async () => {
+      await restartServer({ messageRate: { perSecond: 1, burst: 1 } })
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+      await alice.next('CREATE_GAME')
+
+      vi.advanceTimersByTime(1000)
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+
+      await alice.next('CREATE_GAME')
+      expect(await gamesSeenByNewcomer()).toHaveLength(2)
+    })
+
+    it('disconnects a client that keeps flooding', async () => {
+      await restartServer({ messageRate: { perSecond: 1, burst: 1 } })
+
+      for (let i = 0; i < 30; i++) alice.send('JOIN_GAME', { gameId: 'none' })
+
+      expect(await alice.closedByServer).toBe(1008)
+    })
+
+    it('limits the open games created from one address', async () => {
+      await restartServer({ maxOpenGamesPerAddress: 2 })
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+      await alice.next('CREATE_GAME')
+      bob.send('CREATE_GAME', { content: twoPlayerGame })
+      await bob.next('CREATE_GAME')
+
+      // Changing user id does not help: the limit is per address
+      bob.send('CREATE_GAME', { content: twoPlayerGame })
+
+      expect(await bob.next('ERROR')).toMatch(/too many open games/i)
+    })
+
+    it('counts only the games still open', async () => {
+      await restartServer({ maxOpenGamesPerAddress: 1 })
+      const { gameId } = await startGame()
+      await playRound(gameId, 'apple', 'apple')
+
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+
+      expect((await bob.next<Game>('CREATE_GAME')).settings.status).toBe('opened')
+    })
+
+    it('limits the simultaneous connections from one address', async () => {
+      await restartServer({ maxConnectionsPerAddress: 3 })
+      await connect(server, 'carol')
+
+      const dave = await connect(server, 'dave')
+
+      expect(await dave.closedByServer).toBe(1008)
+    })
+
+    it('limits how often one address opens connections', async () => {
+      await restartServer({ connectionRate: { perSecond: 1 / 60, burst: 3 } })
+      const carol = await connect(server, 'carol')
+      await carol.close()
+
+      const dave = await connect(server, 'dave')
+
+      expect(await dave.closedByServer).toBe(1008)
+    })
+  })
+
+  describe('cleanup of old games', () => {
     it('deletes a game nobody touched for 30 minutes', async () => {
       await restartServer()
       alice.send('CREATE_GAME', { content: twoPlayerGame })
@@ -404,7 +522,7 @@ describe('game server (WebSocket)', () => {
 
     it('keeps a game that is still being played', async () => {
       await restartServer()
-      const { gameId } = await startGame()
+      const { gameId } = await startGame(longGame)
 
       vi.advanceTimersByTime(20 * MINUTE)
       await playRound(gameId, 'apple', 'pear')

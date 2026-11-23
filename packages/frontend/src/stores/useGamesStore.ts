@@ -3,7 +3,6 @@ import {
   syncGame,
   type Game,
   type GameProperties,
-  type GameStatus,
   type PlayerSettings,
   type RequestMessage,
   type SocketPayload,
@@ -124,10 +123,6 @@ export const useGamesStore = defineStore('games', () => {
     message({ gameId, event: 'JOIN_GAME' })
   }
 
-  const endGame = (gameId: string, status: GameStatus) => {
-    message({ gameId, event: 'END_GAME', content: status })
-  }
-
   const deleteGame = (gameId: string) => {
     message({ gameId, event: 'DELETE_GAME' })
   }
@@ -160,7 +155,6 @@ export const useGamesStore = defineStore('games', () => {
     quitGame,
     deleteGame,
     playRound,
-    endGame,
     updatePlayerSettings,
     setUserId,
     setUserName,

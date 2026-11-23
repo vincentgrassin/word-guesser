@@ -9,6 +9,8 @@ import {
   findPlayerById,
   gameForPlayer,
   isGameExpired,
+  isOutOfTime,
+  clientAddress,
   parseMessage,
   removePlayerFromGame,
   removePlayerFromPlayers,
@@ -295,6 +297,41 @@ describe('updateGameStatusTo', () => {
     updateGameStatusTo(game, undefined)
 
     expect(game.settings.status).toBe('started')
+  })
+})
+
+describe('clientAddress', () => {
+  it('takes the address added by the proxy, the last one of X-Forwarded-For', () => {
+    expect(clientAddress('6.6.6.6, 203.0.113.7', '172.18.0.2')).toBe('203.0.113.7')
+    expect(clientAddress(['6.6.6.6', '203.0.113.7'], '172.18.0.2')).toBe('203.0.113.7')
+  })
+
+  it('falls back to the address of the connection without a proxy', () => {
+    expect(clientAddress(undefined, '127.0.0.1')).toBe('127.0.0.1')
+    expect(clientAddress('', '127.0.0.1')).toBe('127.0.0.1')
+  })
+
+  it('still returns a key when nothing is known', () => {
+    expect(clientAddress(undefined, undefined)).toBe('unknown')
+  })
+})
+
+describe('isOutOfTime', () => {
+  const started = (startedAt?: number) =>
+    buildGame({ settings: { status: 'started', duration: 60_000, startedAt } })
+
+  it('is false while the clock has not started', () => {
+    expect(isOutOfTime(started(undefined), 10 ** 9)).toBe(false)
+  })
+
+  it('is true once the duration has passed since the start', () => {
+    expect(isOutOfTime(started(1000), 60_999)).toBe(false)
+    expect(isOutOfTime(started(1000), 61_000)).toBe(true)
+  })
+
+  it('is false for a game that is not being played', () => {
+    const won = buildGame({ settings: { status: 'win', duration: 60_000, startedAt: 0 } })
+    expect(isOutOfTime(won, 10 ** 9)).toBe(false)
   })
 })
 
