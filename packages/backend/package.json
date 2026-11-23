@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "nodemon --watch src --exec tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node ./build/index.js"
+    "start": "node ./build/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -21,9 +23,11 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "msw": "^2.15.0",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "2.1.9"
   }
 }

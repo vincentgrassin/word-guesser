@@ -11,10 +11,13 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
+    "@types/ws": "^8.5.13",
     "typescript": "^5.7.3",
-    "@types/ws": "^8.5.13"
+    "vitest": "2.1.9"
   }
 }

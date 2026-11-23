@@ -1,5 +1,5 @@
 # Continuous integration and deployment.
-# - On every pull request: checks that the project still builds.
+# - On every pull request: checks that the tests pass and the project still builds.
 # - On every push to master: same checks, then deploys to the server if they pass.
 # Results appear in the "Actions" tab of the GitHub repository.
 
@@ -11,7 +11,31 @@ on:
   pull_request:
 
 jobs:
-  # Job 1: install dependencies and build every package
+  # Job 1: run the unit and integration tests of every package
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm (version taken from "packageManager" in package.json)
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm # reuses downloaded packages between runs
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile # fails if pnpm-lock.yaml is out of date
+
+      - name: Run tests
+        # See "test" in each package.json. No build needed first:
+        # the tests read the shared sources directly.
+        run: pnpm test
+
+  # Job 2: install dependencies and build every package
   build:
     runs-on: ubuntu-latest
     steps:
@@ -41,7 +65,7 @@ jobs:
         # Switch to "build" once the type errors are fixed.
         run: pnpm --filter frontend build-only
 
-  # Job 2: check that the production Docker images still build (nothing is published)
+  # Job 3: check that the production Docker images still build (nothing is published)
   docker:
     runs-on: ubuntu-latest
     steps:
@@ -54,9 +78,9 @@ jobs:
       - name: Build frontend image
         run: docker build --target prod -f packages/frontend/Dockerfile .
 
-  # Job 3: deploy to the server (see docs/deployment.md)
+  # Job 4: deploy to the server (see docs/deployment.md)
   deploy:
-    needs: [build, docker] # only runs if both checks pass
+    needs: [test, build, docker] # only runs if all three checks pass
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     concurrency: # one deployment at a time, never cancelled halfway
