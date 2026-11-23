@@ -9,25 +9,28 @@
     "build": "tsc -p tsconfig.json",
     "start": "node ./build/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@fastify/cors": "^10.0.2",
     "@fastify/websocket": "^11.0.2",
     "@word-guesser/shared": "workspace:*",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^22.10.5",
+    "eslint": "^9.39.5",
     "msw": "^2.15.0",
     "nodemon": "^3.1.9",
-    "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.73.0",
     "vitest": "2.1.9"
   }
 }

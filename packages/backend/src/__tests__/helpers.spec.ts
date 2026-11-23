@@ -7,6 +7,8 @@ import {
   cleanPlayer,
   findPlayer,
   findPlayerById,
+  gameForPlayer,
+  isGameExpired,
   parseMessage,
   removePlayerFromGame,
   removePlayerFromPlayers,
@@ -29,9 +31,30 @@ const alice = { userId: 'alice', userName: 'Alice' }
 const bob = { userId: 'bob', userName: 'Bob' }
 
 describe('parseMessage', () => {
+  const raw = (value: unknown) => Buffer.from(JSON.stringify(value))
+
   it('parses a JSON socket message', () => {
-    const raw = Buffer.from(JSON.stringify({ event: 'JOIN_GAME', gameId: 'g1', date: 42 }))
-    expect(parseMessage(raw)).toEqual({ event: 'JOIN_GAME', gameId: 'g1', date: 42 })
+    expect(parseMessage(raw({ event: 'JOIN_GAME', gameId: 'g1', date: 42 }))).toEqual({
+      event: 'JOIN_GAME',
+      gameId: 'g1',
+      date: 42,
+    })
+  })
+
+  it('rejects a message that is not JSON', () => {
+    expect(parseMessage(Buffer.from('not json'))).toBeUndefined()
+  })
+
+  it('rejects an event the client cannot send', () => {
+    expect(parseMessage(raw({ event: 'LIST_GAMES', date: 0 }))).toBeUndefined()
+    expect(parseMessage(raw({ event: 'HACK', date: 0 }))).toBeUndefined()
+    expect(parseMessage(raw(['JOIN_GAME']))).toBeUndefined()
+  })
+
+  it('rejects fields of the wrong type', () => {
+    expect(parseMessage(raw({ event: 'JOIN_GAME', gameId: 1, date: 0 }))).toBeUndefined()
+    expect(parseMessage(raw({ event: 'PLAY_ROUND', content: { a: 1 }, date: 0 }))).toBeUndefined()
+    expect(parseMessage(raw({ event: 'JOIN_GAME', date: 'today' }))).toBeUndefined()
   })
 })
 
@@ -57,7 +80,54 @@ describe('buildInitialGame', () => {
 
   it('falls back to default properties and uses the id as name', () => {
     const game = buildInitialGame('g1', 'alice', undefined)
-    expect(game.settings).toMatchObject({ type: 'basic', maxPlayers: 2, duration: 2, name: 'g1' })
+    expect(game.settings).toMatchObject({
+      type: 'basic',
+      maxPlayers: 2,
+      duration: 120_000,
+      name: 'g1',
+    })
+  })
+
+  it('falls back to default properties when they are not JSON', () => {
+    const game = buildInitialGame('g1', 'alice', '{oops')
+    expect(game.settings).toMatchObject({ maxPlayers: 2, duration: 120_000, name: 'g1' })
+  })
+
+  it('keeps only the properties the creator may choose', () => {
+    const properties = JSON.stringify({ name: 'Fun', status: 'win', createdBy: 'bob', startedAt: 1 })
+    const { settings } = buildInitialGame('g1', 'alice', properties)
+
+    expect(settings.status).toBe('opened')
+    expect(settings.createdBy).toBe('alice')
+    expect(settings.startedAt).toBeUndefined()
+  })
+
+  it('keeps numbers within the allowed range', () => {
+    const tooBig = JSON.stringify({ maxPlayers: 1000, duration: 10 ** 12 })
+    expect(buildInitialGame('g1', 'alice', tooBig).settings).toMatchObject({
+      maxPlayers: 8,
+      duration: 30 * 60_000,
+    })
+
+    const tooSmall = JSON.stringify({ maxPlayers: 0, duration: 1 })
+    expect(buildInitialGame('g1', 'alice', tooSmall).settings).toMatchObject({
+      maxPlayers: 2,
+      duration: 60_000,
+    })
+  })
+
+  it('ignores values of the wrong type', () => {
+    const properties = JSON.stringify({ name: 42, maxPlayers: 'many', type: 'chaos' })
+    expect(buildInitialGame('g1', 'alice', properties).settings).toMatchObject({
+      name: 'g1',
+      maxPlayers: 2,
+      type: 'basic',
+    })
+  })
+
+  it('trims and shortens the name', () => {
+    const properties = JSON.stringify({ name: `  ${'x'.repeat(100)}  ` })
+    expect(buildInitialGame('g1', 'alice', properties).settings.name).toBe('x'.repeat(40))
   })
 })
 
@@ -97,6 +167,28 @@ describe('updatePlayer', () => {
   it('does nothing without settings', () => {
     const player = buildPlayer('alice', 'Alice')
     expect(updatePlayer(undefined, player)).toBeUndefined()
+    expect(player.userName).toBe('Alice')
+  })
+
+  it('does nothing when the settings are not JSON', () => {
+    const player = buildPlayer('alice', 'Alice')
+    expect(updatePlayer('{oops', player)).toBeUndefined()
+    expect(player.userName).toBe('Alice')
+  })
+
+  it('changes nothing but the name', () => {
+    const player = buildPlayer('alice', 'Alice')
+    const socket = player.socket
+    updatePlayer(JSON.stringify({ userId: 'bob', socket: null, userName: 'Alicia' }), player)
+
+    expect(player.userId).toBe('alice')
+    expect(player.socket).toBe(socket)
+    expect(player.userName).toBe('Alicia')
+  })
+
+  it('refuses an empty name', () => {
+    const player = buildPlayer('alice', 'Alice')
+    expect(updatePlayer(JSON.stringify({ userName: '   ' }), player)).toBeUndefined()
     expect(player.userName).toBe('Alice')
   })
 })
@@ -193,6 +285,61 @@ describe('updateGameStatusTo', () => {
     const game = buildGame()
     updateGameStatusTo(game, 'loss')
     expect(game.settings.status).toBe('loss')
+  })
+
+  it('keeps the current status when the new one is invalid', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const game = buildGame({ settings: { status: 'started' } })
+
+    updateGameStatusTo(game, 'paused')
+    updateGameStatusTo(game, undefined)
+
+    expect(game.settings.status).toBe('started')
+  })
+})
+
+describe('isGameExpired', () => {
+  const MINUTE = 60_000
+
+  it('expires any game after 30 minutes without activity', () => {
+    const game = buildGame({ settings: { status: 'started' } })
+    expect(isGameExpired(game, 0, 29 * MINUTE)).toBe(false)
+    expect(isGameExpired(game, 0, 31 * MINUTE)).toBe(true)
+  })
+
+  it('expires a finished game after 10 minutes', () => {
+    expect(isGameExpired(buildGame({ settings: { status: 'win' } }), 0, 11 * MINUTE)).toBe(true)
+    expect(isGameExpired(buildGame({ settings: { status: 'loss' } }), 0, 11 * MINUTE)).toBe(true)
+    expect(isGameExpired(buildGame({ settings: { status: 'loss' } }), 0, 9 * MINUTE)).toBe(false)
+  })
+})
+
+describe('gameForPlayer', () => {
+  const round = (isComplete: boolean) => ({
+    roundId: 1,
+    isComplete,
+    messagesSimilarity: [],
+    messages: [buildMessage('alice', 'apple'), buildMessage('bob', 'pear')],
+  })
+
+  it("hides the other players' words in a round still being played", () => {
+    const game = buildGame({ players: [alice, bob], rounds: [round(false)] })
+
+    const seenByAlice = gameForPlayer(game, 'alice')
+
+    expect(seenByAlice.rounds[0].messages.map((m) => m.content)).toEqual(['apple', undefined])
+  })
+
+  it('shows every word of a complete round', () => {
+    const game = buildGame({ players: [alice, bob], rounds: [round(true)] })
+    const seenByAlice = gameForPlayer(game, 'alice')
+    expect(seenByAlice.rounds[0].messages.map((m) => m.content)).toEqual(['apple', 'pear'])
+  })
+
+  it('leaves the game itself untouched', () => {
+    const game = buildGame({ players: [alice, bob], rounds: [round(false)] })
+    gameForPlayer(game, 'alice')
+    expect(game.rounds[0].messages[1].content).toBe('pear')
   })
 })
 

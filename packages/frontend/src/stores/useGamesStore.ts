@@ -37,7 +37,7 @@ export const useGamesStore = defineStore('games', () => {
 
   const connect = (userId: string, userName: string): Promise<void> => {
     return new Promise((resolve, reject) => {
-      const wsUrl = `${webSocketBaseUrl()}/connect/${userId}?userName=${userName}`
+      const wsUrl = `${webSocketBaseUrl()}/connect/${encodeURIComponent(userId)}?userName=${encodeURIComponent(userName)}`
       if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
         state.socket = new WebSocket(wsUrl)
 
@@ -71,6 +71,10 @@ export const useGamesStore = defineStore('games', () => {
               if (gameId) {
                 removeGame(gameId, state.games)
               }
+              break
+            }
+            case 'ERROR': {
+              console.warn(`[WARN]: The server refused a message: ${payload}`)
               break
             }
           }

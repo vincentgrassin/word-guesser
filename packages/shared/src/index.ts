@@ -81,6 +81,8 @@ export type SocketEvent =
   | 'QUIT_GAME'
   | 'END_GAME'
   | 'UPDATE_PLAYER'
+  // Sent only to the client whose message was refused, with the reason as payload
+  | 'ERROR'
 
 export type WebSocket = WsWebSocket
 

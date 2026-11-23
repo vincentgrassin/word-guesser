@@ -35,7 +35,7 @@ All three restart automatically after a crash or a server reboot (`restart: unle
 
 ### Automatically
 
-Every push to `master` deploys, if the `build` and `docker` checks of [the CI workflow](../.github/workflows/ci.yml) pass. Follow it in the repository's **Actions** tab.
+Every push to `master` deploys, if the `test`, `build` and `docker` checks of [the CI workflow](../.github/workflows/ci.yml) pass. Follow it in the repository's **Actions** tab.
 
 The `deploy` job connects over SSH with a key dedicated to GitHub. On the server, that key is restricted in `~/.ssh/authorized_keys` to a single command, the manual update below. It can't open a shell or run anything else.
 
@@ -54,12 +54,21 @@ On the server:
 
 ```sh
 cd ~/word-guesser
-git pull
+git fetch origin
+git reset --hard origin/master
 docker compose -f docker-compose.prod.yml up --build -d
 docker image prune -f
 ```
 
+`fetch` + `reset --hard` puts the server's code exactly at GitHub's `master`, even if that history was rewritten (amend, force-push), where a `git pull` would refuse. The server is never a place to edit code: **any change made to tracked files on the server is erased by the next deployment**. Files git ignores, like `packages/backend/.env`, are kept.
+
 `up --build -d` rebuilds the images and replaces only the containers that changed. `image prune` deletes the old images to save disk space.
+
+In `~/.ssh/authorized_keys`, the deploy key line holds the same commands on one line:
+
+```
+command="cd ~/word-guesser && git fetch origin && git reset --hard origin/master && docker compose -f docker-compose.prod.yml up --build -d && docker image prune -f",restrict ssh-ed25519 AAAA... github-deploy
+```
 
 **Games in progress are lost on every backend restart**, because they live in memory only.
 
@@ -76,7 +85,7 @@ git checkout <commit>
 docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-Go back to the latest version with `git checkout master && git pull`. Automatic deployments fail until you do, because `git pull` doesn't work outside a branch.
+The next deployment brings the server back to the latest `master`, so revert the faulty commit on GitHub before pushing anything else.
 
 ## Day-to-day commands
 

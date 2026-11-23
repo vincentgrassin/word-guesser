@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
     "install-frontend": "pnpm install --filter frontend",
     "dev-frontend": " pnpm --filter frontend dev",
     "install-backend": "pnpm install --filter backend",

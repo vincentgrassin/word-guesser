@@ -25,6 +25,12 @@ describe('useGamesStore', () => {
     await vi.waitFor(() => expect(store.state.games.map((g) => g.gameId)).toEqual(['g1', 'g2']))
   })
 
+  it('keeps a user name with URL special characters intact', async () => {
+    await store.connect('alice', 'Tom & Jerry #1?')
+
+    expect(fakeGameServer.connections).toEqual([{ userId: 'alice', userName: 'Tom & Jerry #1?' }])
+  })
+
   it('adds a game created by anyone, and updates it on later events', async () => {
     await store.connect('alice', 'Alice')
 

@@ -35,7 +35,7 @@ jobs:
         # the tests read the shared sources directly.
         run: pnpm test
 
-  # Job 2: install dependencies and build every package
+  # Job 2: lint, type-check and build every package
   build:
     runs-on: ubuntu-latest
     steps:
@@ -54,16 +54,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile # fails if pnpm-lock.yaml is out of date
 
+      - name: Lint
+        # Lints backend and frontend. Checks only, never fixes:
+        # run "pnpm --filter <package> lint:fix" locally to fix.
+        run: pnpm lint
+
       - name: Build shared
         run: pnpm --filter @word-guesser/shared build
 
       - name: Build backend
+        # tsc type-checks while it compiles
         run: pnpm --filter backend build
 
       - name: Build frontend
-        # build-only skips the type-check, which currently fails.
-        # Switch to "build" once the type errors are fixed.
-        run: pnpm --filter frontend build-only
+        # "build" runs the type-check (vue-tsc) and the Vite build in parallel
+        run: pnpm --filter frontend build
 
   # Job 3: check that the production Docker images still build (nothing is published)
   docker:

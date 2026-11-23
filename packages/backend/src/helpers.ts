@@ -3,9 +3,9 @@ import {
   GameProperties,
   GameStatus,
   gameStatuses,
+  isPlayerInGame,
   User,
   Player,
-  PlayerSettings,
   RequestMessage,
   ResponseMessage,
   SocketEvent,
@@ -22,16 +22,74 @@ export const WebSocketState = {
   CLOSED: 3,
 } as const
 
-export const parseMessage = (m: Buffer): RequestMessage => {
-  const rawMessage = m.toString()
+// Everything a client sends is untrusted: these limits bound what it can choose.
+export const LIMITS = {
+  maxPlayers: { min: 2, max: 8 },
+  duration: { min: 60_000, max: 30 * 60_000 },
+  gameNameLength: 40,
+  userNameLength: 30,
+  wordLength: 50,
+  maxGames: 100,
+} as const
 
-  return JSON.parse(rawMessage, (key, value) => {
-    if (key === 'date' && typeof value === 'string') {
-      const parsedDate = new Date(value)
-      return isNaN(parsedDate.getTime()) ? value : parsedDate
-    }
-    return value
-  })
+// How long a game is kept without any activity, in milliseconds.
+export const GAME_EXPIRY = {
+  finished: 10 * 60_000,
+  inactive: 30 * 60_000,
+} as const
+
+export const isGameExpired = (game: Game, lastActivityAt: number, now: number) => {
+  const isFinished = game.settings.status === 'win' || game.settings.status === 'loss'
+  const maxIdle = isFinished ? GAME_EXPIRY.finished : GAME_EXPIRY.inactive
+  return now - lastActivityAt > maxIdle
+}
+
+const DEFAULT_GAME_PROPERTIES = { type: 'basic', maxPlayers: 2, duration: 2 * 60_000 } as const
+
+const CLIENT_EVENTS = new Set<SocketEvent>([
+  'CREATE_GAME',
+  'JOIN_GAME',
+  'PLAY_ROUND',
+  'QUIT_GAME',
+  'END_GAME',
+  'DELETE_GAME',
+  'UPDATE_PLAYER',
+])
+
+const parseJson = (raw: string): unknown => {
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return undefined
+  }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isOptionalString = (value: unknown): value is string | undefined =>
+  value === undefined || typeof value === 'string'
+
+// Trimmed and shortened text, or '' when the value is not a string.
+export const readText = (value: unknown, maxLength: number): string =>
+  typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
+
+const readInteger = (value: unknown, fallback: number, range: { min: number; max: number }) =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(range.max, Math.max(range.min, Math.round(value)))
+    : fallback
+
+// The message, or undefined when it is not a well-formed client message.
+export const parseMessage = (m: Buffer): RequestMessage | undefined => {
+  const data = parseJson(m.toString())
+  if (!isRecord(data)) return undefined
+
+  const { event, gameId, content, date } = data
+  if (typeof event !== 'string' || !CLIENT_EVENTS.has(event as SocketEvent)) return undefined
+  if (!isOptionalString(gameId) || !isOptionalString(content)) return undefined
+  if (typeof date !== 'number') return undefined
+
+  return { event: event as SocketEvent, gameId, content, date }
 }
 
 export const updatePlayerInGames = (games: Game[], player: Player) => {
@@ -54,10 +112,17 @@ export const addPlayerToGame = (game: Game, player: Player | undefined) => {
   game.players.push(cleanedPlayer)
 }
 
+// Only the name can change: the id and the socket belong to the connection.
+// Returns undefined when the settings are invalid.
 export const updatePlayer = (rawPlayerSettings: string | undefined, player: Player) => {
   if (!rawPlayerSettings) return
-  const playerSettings: PlayerSettings = JSON.parse(rawPlayerSettings)
-  Object.assign(player, playerSettings)
+  const playerSettings = parseJson(rawPlayerSettings)
+  if (!isRecord(playerSettings)) return
+
+  const userName = readText(playerSettings.userName, LIMITS.userNameLength)
+  if (!userName) return
+
+  player.userName = userName
   return player
 }
 
@@ -145,6 +210,7 @@ export const updateGameStatusTo = (game: Game, status: string | undefined) => {
   const value = status as GameStatus
   if (!value || !gameStatuses.has(value)) {
     console.error(`Invalid game status: ${status}`)
+    return
   }
   game.settings.status = value
 }
@@ -160,9 +226,16 @@ export const buildInitialGame = (
   userId: string,
   rawProperties: string | undefined,
 ): Game => {
-  const gameProperties: GameProperties = rawProperties
-    ? JSON.parse(rawProperties)
-    : { type: 'basic', maxPlayers: 2, duration: 2 }
+  const parsed = rawProperties ? parseJson(rawProperties) : undefined
+  const input = isRecord(parsed) ? parsed : {}
+
+  // Pick each property the creator may choose; status, createdBy... are the server's.
+  const gameProperties: GameProperties = {
+    type: input.type === 'solo' ? 'solo' : DEFAULT_GAME_PROPERTIES.type,
+    maxPlayers: readInteger(input.maxPlayers, DEFAULT_GAME_PROPERTIES.maxPlayers, LIMITS.maxPlayers),
+    duration: readInteger(input.duration, DEFAULT_GAME_PROPERTIES.duration, LIMITS.duration),
+    name: readText(input.name, LIMITS.gameNameLength) || gameId,
+  }
 
   return {
     gameId,
@@ -173,10 +246,34 @@ export const buildInitialGame = (
       createdBy: userId,
       createdAt: Date.now(),
       ...gameProperties,
-      name: gameProperties?.name || gameId,
     },
   }
 }
+
+// The game as one player may see it: the other players' words of the round
+// being played stay hidden until everyone has answered.
+export const gameForPlayer = (game: Game, userId: string): Game => ({
+  ...game,
+  rounds: game.rounds.map((round) =>
+    round.isComplete
+      ? round
+      : {
+          ...round,
+          messages: round.messages.map((m) =>
+            m.userId === userId ? m : { ...m, content: undefined },
+          ),
+        },
+  ),
+})
+
+export const canPlayRound = (game: Game) => game.settings.status === 'started'
+
+export const canDeleteGame = (userId: string, game: Game) =>
+  game.settings.createdBy === userId || isPlayerInGame(userId, game)
+
+// A win is decided by the server; a client can only report that time ran out.
+export const canEndGame = (userId: string, game: Game, status: string | undefined) =>
+  status === 'loss' && game.settings.status === 'started' && isPlayerInGame(userId, game)
 
 export const broadcastToOne = (player: Player, event: SocketEvent, payload: unknown) => {
   player.socket.send(JSON.stringify({ event, payload }))
@@ -185,6 +282,12 @@ export const broadcastToOne = (player: Player, event: SocketEvent, payload: unkn
 export const broadcast = (players: Player[], event: SocketEvent, payload: unknown) => {
   players.forEach((player) => {
     broadcastToOne(player, event, payload)
+  })
+}
+
+export const broadcastGame = (players: Player[], event: SocketEvent, game: Game) => {
+  players.forEach((player) => {
+    broadcastToOne(player, event, gameForPlayer(game, player.userId))
   })
 }
 

@@ -197,6 +197,246 @@ describe('game server (WebSocket)', () => {
     expect(game.players).toContainEqual({ userId: 'alice', userName: 'Alicia' })
   })
 
+  // What a newcomer sees: reading the state through a fresh connection.
+  async function gamesSeenByNewcomer(): Promise<Game[]> {
+    const carol = await connect(server, 'carol')
+    return carol.next<Game[]>('LIST_GAMES')
+  }
+
+  describe('robustness', () => {
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    it('survives a message that is not JSON', async () => {
+      alice.ws.send('not json')
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
+
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+      expect((await bob.next<Game>('CREATE_GAME')).settings.name).toBe('Duo')
+    })
+
+    it('survives a message with an unknown event', async () => {
+      alice.ws.send(JSON.stringify({ event: 'HACK', date: 0 }))
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
+    })
+
+    it('survives game properties that are not JSON', async () => {
+      alice.send('CREATE_GAME', { content: '{oops' })
+      const game = await bob.next<Game>('CREATE_GAME')
+      expect(game.settings).toMatchObject({ maxPlayers: 2, status: 'opened' })
+    })
+
+    it('survives player settings that are not JSON', async () => {
+      alice.send('UPDATE_PLAYER', { content: '{oops' })
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
+    })
+  })
+
+  describe('hidden words', () => {
+    it("hides the other players' words until the round is complete", async () => {
+      const { gameId } = await startGame()
+
+      alice.send('PLAY_ROUND', { gameId, content: 'apple' })
+      const seenByAlice = await alice.next<Game>('PLAY_ROUND')
+      const seenByBob = await bob.next<Game>('PLAY_ROUND')
+
+      expect(seenByAlice.rounds[0].messages[0].content).toBe('apple')
+      expect(seenByBob.rounds[0].messages[0].content).toBeUndefined()
+      expect(seenByBob.rounds[0].messages[0].userId).toBe('alice')
+    })
+
+    it('hides them in the list of games sent on connection too', async () => {
+      const { gameId } = await startGame()
+      alice.send('PLAY_ROUND', { gameId, content: 'apple' })
+      await alice.next('PLAY_ROUND')
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.rounds[0].messages[0].content).toBeUndefined()
+    })
+
+    it('reveals every word once the round is complete', async () => {
+      const { gameId } = await startGame()
+
+      await playRound(gameId, 'apple', 'pear')
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.rounds[0].messages.map((m) => m.content)).toEqual(['apple', 'pear'])
+    })
+  })
+
+  describe('rules enforced by the server', () => {
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    it('refuses a round before the game started', async () => {
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+      const { gameId } = await alice.next<Game>('CREATE_GAME')
+      alice.send('JOIN_GAME', { gameId })
+      await alice.next('JOIN_GAME')
+
+      alice.send('PLAY_ROUND', { gameId, content: 'apple' })
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.rounds).toEqual([])
+    })
+
+    it('refuses an empty word', async () => {
+      const { gameId } = await startGame()
+
+      alice.send('PLAY_ROUND', { gameId, content: '   ' })
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.rounds).toEqual([])
+    })
+
+    it('refuses a round once the game is won', async () => {
+      const { gameId } = await startGame()
+      await playRound(gameId, 'apple', 'apple')
+
+      alice.send('PLAY_ROUND', { gameId, content: 'again' })
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.rounds).toHaveLength(1)
+    })
+
+    it('ignores game settings the client must not choose', async () => {
+      const content = JSON.stringify({
+        name: 'Duo',
+        maxPlayers: 1000,
+        duration: 120_000,
+        type: 'basic',
+        status: 'win',
+        createdBy: 'bob',
+      })
+      alice.send('CREATE_GAME', { content })
+
+      const { settings } = await bob.next<Game>('CREATE_GAME')
+      expect(settings).toMatchObject({ status: 'opened', createdBy: 'alice', maxPlayers: 8 })
+    })
+
+    it('does not let a player take the id of someone else', async () => {
+      await startGame()
+
+      alice.send('UPDATE_PLAYER', { content: JSON.stringify({ userId: 'bob', userName: 'Alicia' }) })
+      const game = await bob.next<Game>('UPDATE_PLAYER')
+
+      expect(game.players).toEqual([
+        { userId: 'alice', userName: 'Alicia' },
+        { userId: 'bob', userName: 'bob-name' },
+      ])
+    })
+
+    it('keeps the game when a player update carries a game id', async () => {
+      const { gameId } = await startGame()
+
+      alice.send('UPDATE_PLAYER', { gameId, content: JSON.stringify({ userName: 'Alicia' }) })
+      await bob.next('UPDATE_PLAYER')
+
+      const games = await gamesSeenByNewcomer()
+      expect(games.map((g) => g.gameId)).toEqual([gameId])
+    })
+
+    it('only lets a player of the game end it', async () => {
+      const { gameId } = await startGame()
+      const carol = await connect(server, 'carol')
+
+      carol.send('END_GAME', { gameId, content: 'loss' })
+      expect(await carol.next('ERROR')).toEqual(expect.any(String))
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.settings.status).toBe('started')
+    })
+
+    it('does not let a client declare a win', async () => {
+      const { gameId } = await startGame()
+
+      alice.send('END_GAME', { gameId, content: 'win' })
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.settings.status).toBe('started')
+    })
+
+    it('only lets the creator or a player delete a game', async () => {
+      const { gameId } = await startGame()
+      const carol = await connect(server, 'carol')
+
+      carol.send('DELETE_GAME', { gameId })
+      expect(await carol.next('ERROR')).toEqual(expect.any(String))
+
+      const games = await gamesSeenByNewcomer()
+      expect(games.map((g) => g.gameId)).toEqual([gameId])
+    })
+  })
+
+  describe('cleanup of old games', () => {
+    const MINUTE = 60_000
+
+    // Restart the server with a fake clock, so tests can jump forward in time.
+    async function restartServer(options?: Parameters<typeof buildServer>[0]) {
+      await server.close()
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+      server = buildServer(options)
+      await server.ready()
+      alice = await connect(server, 'alice')
+      bob = await connect(server, 'bob')
+    }
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('deletes a game nobody touched for 30 minutes', async () => {
+      await restartServer()
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+      const { gameId } = await alice.next<Game>('CREATE_GAME')
+
+      vi.advanceTimersByTime(31 * MINUTE)
+
+      expect(await bob.next('DELETE_GAME')).toBe(gameId)
+      expect(await gamesSeenByNewcomer()).toEqual([])
+    })
+
+    it('keeps a game that is still being played', async () => {
+      await restartServer()
+      const { gameId } = await startGame()
+
+      vi.advanceTimersByTime(20 * MINUTE)
+      await playRound(gameId, 'apple', 'pear')
+      vi.advanceTimersByTime(20 * MINUTE)
+
+      const games = await gamesSeenByNewcomer()
+      expect(games.map((g) => g.gameId)).toEqual([gameId])
+    })
+
+    it('deletes a finished game after 10 minutes', async () => {
+      await restartServer()
+      const { gameId } = await startGame()
+      await playRound(gameId, 'apple', 'apple')
+
+      vi.advanceTimersByTime(11 * MINUTE)
+
+      expect(await bob.next('DELETE_GAME')).toBe(gameId)
+    })
+
+    it('refuses a new game when the server already holds too many', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      await restartServer({ maxGames: 1 })
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+      await alice.next('CREATE_GAME')
+
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+
+      expect(await alice.next('ERROR')).toEqual(expect.any(String))
+      expect(await gamesSeenByNewcomer()).toHaveLength(1)
+    })
+  })
+
   it('tells the other players when someone disconnects', async () => {
     await startGame()
 

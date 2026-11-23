@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { computed, defineProps, type InputHTMLAttributes } from 'vue'
+import { computed } from 'vue'
 
-const { variant } = defineProps<
-  {
-    label: string
-    modelValue: string | number
-    variant: 'text' | 'number'
-  } & /** @vue-ignore */ InputHTMLAttributes
->()
+// Other attributes (placeholder, class...) fall through to the input via $attrs.
+const { variant } = defineProps<{
+  label: string
+  variant: 'text' | 'number'
+}>()
 
 const inputModel = defineModel<string | number>()
 
