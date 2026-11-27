@@ -29,6 +29,8 @@ COPY packages/backend/package.json packages/backend/
 RUN pnpm install --frozen-lockfile --prod --filter backend...
 COPY --from=build /app/packages/shared/dist packages/shared/dist
 COPY --from=build /app/packages/backend/build packages/backend/build
+# Word vectors for the proximity scores, read from build/ as ../data/vectors.bin
+COPY packages/backend/data packages/backend/data
 WORKDIR /app/packages/backend
 EXPOSE 3000
 CMD ["node", "build/index.js"]

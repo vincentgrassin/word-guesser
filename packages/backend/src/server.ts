@@ -42,6 +42,7 @@ import {
 } from './helpers.js'
 import { loadState, saveState } from './persistence.js'
 import { createTokenBucket, RateLimit, TokenBucket } from './rateLimit.js'
+import { isSemanticOn } from './semantic.js'
 
 // Largest WebSocket message accepted, in bytes: game messages are a few hundred.
 const MAX_MESSAGE_SIZE = 16 * 1024
@@ -218,7 +219,8 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
 
   // Polled by Docker (docker-compose.prod.yml). Not reachable from outside:
   // Caddy only forwards /connect/* to the backend.
-  server.get('/health', async () => ({ status: 'ok' }))
+  // semantic: 'off' means the word vectors could not be loaded (see the startup logs)
+  server.get('/health', async () => ({ status: 'ok', semantic: isSemanticOn() ? 'on' : 'off' }))
 
   server.register(websocketPlugin, { options: { maxPayload: MAX_MESSAGE_SIZE } })
 

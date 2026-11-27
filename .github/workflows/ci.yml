@@ -78,7 +78,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build backend image
-        run: docker build --target prod -f packages/backend/Dockerfile .
+        run: docker build --target prod -f packages/backend/Dockerfile -t word-guesser-backend:ci .
+
+      - name: Check the backend image loads the word vectors
+        # Without them the game still runs, but with no proximity scores: fail here instead.
+        run: >
+          docker run --rm word-guesser-backend:ci
+          node -e "import('./build/semantic.js').then((m) => process.exit(m.loadSemantic() ? 0 : 1))"
 
       - name: Build frontend image
         run: docker build --target prod -f packages/frontend/Dockerfile .

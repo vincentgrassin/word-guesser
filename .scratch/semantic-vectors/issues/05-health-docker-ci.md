@@ -1,6 +1,6 @@
 # 05 - Ship the vector file: health check, Docker, CI
 
-Status: open
+Status: done
 Blocked by: 02
 
 ## What
@@ -22,3 +22,10 @@ Make sure the vector file reaches production, and that a degraded mode cannot go
 - CI fails if the file is missing or unreadable.
 
 ## Comments
+
+### 2026-11-27 - Implemented
+
+- Caddy does not route `/health` (it goes to the frontend). Rather than exposing it, `docs/deployment.md` explains how to ask the backend from the server.
+- The `backend_data` volume is mounted on `/app/data` (saved games); the vectors are in `/app/packages/backend/data`: no clash.
+- CI checks the built image itself (`docker run ... loadSemantic()`), so it catches both a file missing from the image and a wrong path from `build/`. Run locally: exit 0 with the file, exit 1 without.
+- Not run: the full `docker compose -f docker-compose.prod.yml up` (it would take ports 80/443 on the dev machine). The image check and the `/health` tests cover the same ground; check `/health` on the server after the first deploy.

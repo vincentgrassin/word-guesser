@@ -31,6 +31,16 @@ All three restart automatically after a crash or a server reboot (`restart: unle
 
 Docker checks every 30 s that `backend` (`GET /health`) and `frontend` answer. `docker compose ps` shows the result as `healthy` or `unhealthy`. Caddy only starts once both are healthy.
 
+### Word proximity scores
+
+The backend scores how close the players' words are with `packages/backend/data/vectors.bin`, copied into its image. If the file is missing or unreadable, the game still runs, without scores, and the backend logs `[ERROR]: Semantics off`. `/health` tells which case you are in. Caddy does not route `/health`, so ask the backend from the server:
+
+```sh
+docker compose -f docker-compose.prod.yml exec backend wget -qO- http://127.0.0.1:3000/health
+```
+
+It should answer `{"status":"ok","semantic":"on"}`. With `"semantic":"off"`, look for the reason in `docker compose -f docker-compose.prod.yml logs backend`.
+
 ### Saved games
 
 The backend keeps the games in memory and saves them to `/app/data/state.json` (`STATE_FILE`) when it stops and every minute. The file lives in the `backend_data` Docker volume, so it survives deployments: games in progress continue after a restart, and the browsers reconnect on their own.

@@ -131,7 +131,17 @@ describe('game server (WebSocket)', () => {
     const response = await server.inject({ method: 'GET', url: '/health' })
 
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual({ status: 'ok' })
+    expect(response.json()).toEqual({ status: 'ok', semantic: 'on' })
+  })
+
+  it('stays healthy without the word vectors, and says semantics are off', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    loadSemantic(join(vectors.dir, 'missing.bin'))
+
+    const response = await server.inject({ method: 'GET', url: '/health' })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({ status: 'ok', semantic: 'off' })
   })
 
   it('sends the list of games to a player who connects', async () => {
