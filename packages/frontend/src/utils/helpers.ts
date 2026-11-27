@@ -35,19 +35,22 @@ export const computeGameStatusIcon = (status: GameStatus): IconName => {
   }
 }
 
-const getMaxScore = (messageId: string, round: Round) => {
-  if (!messageId) return 0
-  const score = round.messagesSimilarity.reduce(
-    (max, { sourceId, targetId, score }) =>
-      score !== null && (sourceId === messageId || targetId === messageId)
-        ? Math.max(max, score)
-        : max,
-    0,
-  )
-  return score
+// A message's best score against the other words of its round:
+// - a number: its level is shown;
+// - null: every pair has an unknown word, shown as "?";
+// - undefined: nothing to show (round not scored yet, or semantics off on the server).
+export type MessageScore = number | null | undefined
+
+const getBestScore = (messageId: string, round: Round): MessageScore => {
+  const scores = round.messagesSimilarity
+    .filter(({ sourceId, targetId }) => sourceId === messageId || targetId === messageId)
+    .map(({ score }) => score)
+  if (scores.length === 0) return undefined
+  const known = scores.filter((score) => score !== null)
+  return known.length > 0 ? Math.max(...known) : null
 }
 
-type MessageWithScore = ResponseMessage & { score: number }
+type MessageWithScore = ResponseMessage & { score: MessageScore }
 
 export function sortRoundMessages(
   userId: string,
@@ -62,18 +65,11 @@ export function sortRoundMessages(
 
   return {
     me: userMessage
-      ? { ...userMessage, score: getMaxScore(userMessage.messageId, round) }
+      ? { ...userMessage, score: getBestScore(userMessage.messageId, round) }
       : undefined,
     others: otherMessages.map((msg) => ({
       ...msg,
-      score: getMaxScore(msg.messageId, round),
+      score: getBestScore(msg.messageId, round),
     })),
   }
-}
-
-export function computeScore(score: number) {
-  if (score < 0.4) return 'low'
-  if (score < 0.5) return 'medium'
-  if (score < 0.7) return 'high'
-  return 'extreme'
 }

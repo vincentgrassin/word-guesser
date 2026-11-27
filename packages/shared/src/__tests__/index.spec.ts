@@ -9,6 +9,7 @@ import {
   syncGame,
   type Game,
   type ResponseMessage,
+  scoreLevel,
 } from '../index'
 
 const buildGame = (overrides: Partial<Game> = {}): Game => ({
@@ -134,5 +135,20 @@ describe('isPlayerInGame', () => {
     expect(isPlayerInGame('alice', game)).toBe(true)
     expect(isPlayerInGame('bob', game)).toBe(false)
     expect(isPlayerInGame('alice', undefined)).toBe(false)
+  })
+})
+
+describe('scoreLevel', () => {
+  it.each([
+    [0, 'low'],
+    [0.29, 'low'],
+    [0.3, 'medium'],
+    [0.41, 'medium'],
+    [0.42, 'high'],
+    [0.57, 'high'],
+    [0.58, 'extreme'],
+    [1, 'extreme'],
+  ])('%s is %s', (score, level) => {
+    expect(scoreLevel(score)).toBe(level)
   })
 })

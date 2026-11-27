@@ -45,6 +45,19 @@ export type MessageSimilarity = {
   score: number | null
 }
 
+export type ScoreLevel = 'low' | 'medium' | 'high' | 'extreme'
+
+// Calibrated for the backend's word vectors (fastText cc.fr.300, see
+// packages/backend/data): change them together with the vector file.
+export const SCORE_THRESHOLDS = { medium: 0.3, high: 0.42, extreme: 0.58 } as const
+
+export function scoreLevel(score: number): ScoreLevel {
+  if (score >= SCORE_THRESHOLDS.extreme) return 'extreme'
+  if (score >= SCORE_THRESHOLDS.high) return 'high'
+  if (score >= SCORE_THRESHOLDS.medium) return 'medium'
+  return 'low'
+}
+
 export type Round = {
   roundId: number
   messages: ResponseMessage[]

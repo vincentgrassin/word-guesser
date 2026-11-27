@@ -1,22 +1,20 @@
 <script lang="ts" setup>
-import { computeScore, formatTime } from '@/utils/helpers'
+import { formatTime, type MessageScore } from '@/utils/helpers'
+import { scoreLevel } from '@word-guesser/shared'
 import { computed } from 'vue'
 
-const {
-  date,
-  score = 0,
-  position,
-} = defineProps<{
+const { date, score, position } = defineProps<{
   bet: string | undefined
   date?: number
   isRevealed: boolean
-  score?: number
+  score?: MessageScore
   position: 'left' | 'right'
 }>()
 
 const levelClass = computed(() => {
-  const level = computeScore(score)
-  switch (level) {
+  // No score (unknown word, or nothing to show): the neutral look
+  if (typeof score !== 'number') return 'border-primary shadow-primary'
+  switch (scoreLevel(score)) {
     case 'medium':
       return 'border-yellow shadow-yellow'
     case 'high':
@@ -63,6 +61,13 @@ const positionClass = computed(() => {
     >
       {{ isRevealed ? bet : 'placeholder' }}
     </p>
+    <span
+      v-if="isRevealed && score === null"
+      title="Unknown word: no proximity score"
+      aria-label="Unknown word: no proximity score"
+      class="font-mono text-xl font-bold"
+      >?</span
+    >
     <p
       v-if="!!date"
       :class="{

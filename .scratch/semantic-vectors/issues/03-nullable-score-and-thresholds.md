@@ -1,6 +1,6 @@
 # 03 - Unknown words, degraded mode and thresholds on the frontend
 
-Status: open
+Status: done
 Blocked by: none
 
 ## What

@@ -2,7 +2,6 @@ import type { ResponseMessage, Round } from '@word-guesser/shared'
 import { describe, expect, it } from 'vitest'
 import {
   computeGameStatusIcon,
-  computeScore,
   formatDuration,
   formatTime,
   sortRoundMessages,
@@ -39,19 +38,6 @@ describe('computeGameStatusIcon', () => {
   })
 })
 
-describe('computeScore', () => {
-  it.each([
-    [0, 'low'],
-    [0.39, 'low'],
-    [0.4, 'medium'],
-    [0.5, 'high'],
-    [0.7, 'extreme'],
-    [1, 'extreme'],
-  ])('%s is %s', (score, level) => {
-    expect(computeScore(score)).toBe(level)
-  })
-})
-
 describe('sortRoundMessages', () => {
   const round: Round = {
     roundId: 1,
@@ -78,8 +64,30 @@ describe('sortRoundMessages', () => {
     expect(sortRoundMessages('dave', round).me).toBeUndefined()
   })
 
-  it('scores 0 when the round has no similarity yet', () => {
+  it('has no score when the round has no similarity (not scored yet, or semantics off)', () => {
     const { me } = sortRoundMessages('alice', { ...round, messagesSimilarity: [] })
-    expect(me?.score).toBe(0)
+    expect(me?.score).toBeUndefined()
+  })
+
+  it('ignores the pairs with an unknown word when picking the best score', () => {
+    const { me } = sortRoundMessages('alice', {
+      ...round,
+      messagesSimilarity: [
+        { sourceId: 'm1', targetId: 'm2', score: null },
+        { sourceId: 'm1', targetId: 'm3', score: 0.2 },
+      ],
+    })
+    expect(me?.score).toBe(0.2)
+  })
+
+  it('gives a null score when every pair has an unknown word', () => {
+    const { me } = sortRoundMessages('alice', {
+      ...round,
+      messagesSimilarity: [
+        { sourceId: 'm1', targetId: 'm2', score: null },
+        { sourceId: 'm1', targetId: 'm3', score: null },
+      ],
+    })
+    expect(me?.score).toBeNull()
   })
 })
