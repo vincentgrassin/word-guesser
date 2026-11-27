@@ -99,4 +99,44 @@ describe('Home page', () => {
     fakeGameServer.send('CREATE_GAME', buildGame({ gameId: 'g2', settings: { name: 'Trio' } }))
     await vi.waitFor(() => expect(wrapper.text()).toContain('Trio'))
   })
+
+  it('creates a Solo game with a bot level, without a number of players', async () => {
+    logInAs('alice', 'Alice')
+    app = await renderApp('/')
+    const { wrapper } = app
+
+    const createButton = wrapper.findAll('button').find((b) => b.text() === 'Create game')!
+    await createButton.trigger('click')
+    const form = wrapper.find('[role="dialog"] form')
+    await form.find('input[value="solo"]').setValue(true)
+
+    expect(form.text()).not.toContain('Number of players')
+    expect(form.text()).toContain('Bot level')
+    await form.find('input[value="hard"]').setValue(true)
+    await form.find('input').setValue('Me')
+    await form.trigger('submit')
+
+    await vi.waitFor(() => expect(fakeGameServer.receivedEvents('CREATE_GAME')).toHaveLength(1))
+    const [message] = fakeGameServer.receivedEvents('CREATE_GAME')
+    expect(JSON.parse(message.content!)).toMatchObject({
+      type: 'solo',
+      name: 'Me',
+      botLevel: 'hard',
+    })
+  })
+
+  it('shows why the server refused a message, until dismissed', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    logInAs('alice', 'Alice')
+    app = await renderApp('/')
+    const { wrapper } = app
+
+    fakeGameServer.send('ERROR', 'Solo mode is unavailable')
+
+    await vi.waitFor(() =>
+      expect(wrapper.find('[role="alert"]').text()).toContain('Solo mode is unavailable'),
+    )
+    await wrapper.find('[role="alert"] button').trigger('click')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
 })

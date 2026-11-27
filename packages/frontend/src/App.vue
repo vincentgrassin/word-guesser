@@ -9,9 +9,17 @@ const { state } = useGamesStore()
   <p
     v-if="state.connectionLost"
     role="status"
-    class="bg-secondary border-b-4 border-black p-2 text-center font-bold"
+    class="border-b-4 border-black bg-secondary p-2 text-center font-bold"
   >
     Connection lost, reconnecting…
   </p>
+  <div
+    v-if="state.serverError"
+    role="alert"
+    class="flex items-center justify-center gap-4 border-b-4 border-black bg-red p-2 font-bold"
+  >
+    <p>{{ state.serverError }}</p>
+    <button type="button" class="underline" @click="state.serverError = null">Dismiss</button>
+  </div>
   <RouterView />
 </template>

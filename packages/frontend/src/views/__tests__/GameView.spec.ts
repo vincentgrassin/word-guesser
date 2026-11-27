@@ -47,6 +47,27 @@ describe('Game page', () => {
     expect(text).toContain('Waiting for first round')
   })
 
+  it('shows the bot of a Solo game as a bot, and its level', async () => {
+    const bot = { userId: 'bot-1', userName: 'Bot (hard)', isBot: true }
+    fakeGameServer.games = [
+      buildGame({
+        gameId: 'g1',
+        players: [alice, bot],
+        settings: { name: 'Me', status: 'started', type: 'solo', botLevel: 'hard' },
+      }),
+    ]
+
+    app = await renderApp('/game/g1')
+
+    await vi.waitFor(() => expect(app.wrapper.text()).toContain('Bot (hard)'))
+    const text = app.wrapper.text()
+    expect(text).toContain('bot')
+    expect(text).toContain('bot level')
+    expect(text).toContain('hard')
+    // Already seated at creation: the page does not join again
+    expect(fakeGameServer.receivedEvents('JOIN_GAME')).toHaveLength(0)
+  })
+
   it('joins the game when the player is not in it yet', async () => {
     fakeGameServer.games = [buildGame({ gameId: 'g1', players: [bob] })]
 

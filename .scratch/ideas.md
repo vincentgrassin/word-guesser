@@ -49,6 +49,10 @@ The game screen feels flat: nothing moves or reacts at the key moments. Agreed d
 - **Tech**: Vue `<Transition>` / `<TransitionGroup>` + CSS keyframes; a small canvas confetti (hand-written or `canvas-confetti`). Respect `prefers-reduced-motion`.
 - **Open question**: with 4 players (2 teams of 2, see Duel above), what does the screen show of the other team? At least an indicator of its progress.
 
+## UI text
+
+- **Translate the UI texts into French**: every screen (lobby, game, modals, error messages sent by the backend). Also listed under Game feel ("UI fully in French"), but it can ship on its own, before the redesign.
+
 ## Lobby
 
 - Redesign the lobby (Solo games are only shown to their creator).

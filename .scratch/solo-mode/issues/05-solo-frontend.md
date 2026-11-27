@@ -1,6 +1,6 @@
 # 05 - Create and play a Solo game in the browser
 
-Status: open
+Status: done
 Blocked by: 02
 
 ## What
@@ -27,3 +27,9 @@ The creation form offers Solo with a level, and the game screen shows the bot as
 - A Solo game can be created and played from the browser, and the tests above pass.
 
 ## Comments
+
+### 2026-11-27 - Implemented
+
+- Server refusals were only logged in the console. They now show in a dismissable banner (`state.serverError` in the store, shown by `App.vue`), for every refusal, not only "Solo mode is unavailable".
+- Same flow as a basic game after creation: the game shows in the lobby (for its creator only) and the player opens it. The creator is already seated, so the game page sends no `JOIN_GAME`.
+- The creation form keeps its field order (name, players, duration, type), so the existing test still finds the inputs; the level comes last.

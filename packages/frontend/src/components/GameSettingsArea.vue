@@ -59,6 +59,12 @@ const { gameTimer } = useGameTimer(game)
         :variant="gameTimer < 30 * 1000 ? 'secondary' : 'primary'"
       />
       <GameSettingItem :value="game.settings.type" icon="acid" label="mode" />
+      <GameSettingItem
+        v-if="game.settings.botLevel"
+        :value="game.settings.botLevel"
+        icon="cog"
+        label="bot level"
+      />
     </div>
   </div>
 </template>

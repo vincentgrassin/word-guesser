@@ -17,6 +17,8 @@ type GamesState = {
   user: User
   // True from an unexpected disconnection until the connection is back
   connectionLost: boolean
+  // The last message the server refused, shown until the player dismisses it
+  serverError: string | null
 }
 
 type ConnectionTarget = { userId: string; userName: string; token: string }
@@ -40,6 +42,7 @@ export const useGamesStore = defineStore('games', () => {
       userName: '',
     },
     connectionLost: false,
+    serverError: null,
   })
 
   let target: ConnectionTarget | null = null
@@ -75,6 +78,7 @@ export const useGamesStore = defineStore('games', () => {
       }
       case 'ERROR': {
         console.warn(`[WARN]: The server refused a message: ${payload}`)
+        state.serverError = String(payload)
         break
       }
     }
@@ -86,7 +90,9 @@ export const useGamesStore = defineStore('games', () => {
     if (!target) return
     const { userId, userName, token } = target
     const query = `userName=${encodeURIComponent(userName)}&token=${encodeURIComponent(token)}`
-    const socket = new WebSocket(`${webSocketBaseUrl()}/connect/${encodeURIComponent(userId)}?${query}`)
+    const socket = new WebSocket(
+      `${webSocketBaseUrl()}/connect/${encodeURIComponent(userId)}?${query}`,
+    )
     state.socket = socket
 
     socket.onopen = () => {

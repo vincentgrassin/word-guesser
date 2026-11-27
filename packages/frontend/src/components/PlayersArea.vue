@@ -19,12 +19,14 @@ const otherPlayers = computed(() => sortPlayers(state.user.userId, game.players)
       <BaseText as="p" :content="`${me?.userName} (me)`" />
     </div>
     <div class="flex w-1/2 flex-col items-center justify-center gap-2">
-      <BaseText
-        as="p"
-        v-for="(player, index) in otherPlayers"
-        :key="index"
-        :content="`${player?.userName}`"
-      />
+      <div v-for="(player, index) in otherPlayers" :key="index" class="flex items-center gap-2">
+        <BaseText as="p" :content="`${player?.userName}`" />
+        <span
+          v-if="player.isBot"
+          class="border-2 border-black bg-secondary px-1 font-mono text-xs font-bold uppercase"
+          >bot</span
+        >
+      </div>
     </div>
   </div>
 </template>
