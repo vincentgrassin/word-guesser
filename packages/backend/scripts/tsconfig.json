@@ -1,0 +1,10 @@
+{
+  // Type-checks the scripts in the editor. They are run with tsx, never compiled.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "target": "es2022"
+  },
+  "include": ["."],
+  "exclude": []
+}

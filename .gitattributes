@@ -1,0 +1,2 @@
+# Generated binary data: never convert line endings or diff it as text
+*.bin binary

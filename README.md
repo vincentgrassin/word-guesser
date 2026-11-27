@@ -86,3 +86,13 @@ The server setup and the update procedure are described in [docs/deployment.md](
 pnpm docker:sh-backend
 pnpm docker:sh-frontend
 ```
+
+## Regenerate the word vectors
+
+The backend scores how close two words are in meaning with `packages/backend/data/vectors.bin`: French word vectors from [fastText](https://fasttext.cc/docs/en/crawl-vectors.html), restricted to the frequent words of [Lexique 3.83](http://www.lexique.org). The file is committed, so this is only needed to change how it is built.
+
+```sh
+pnpm --filter backend build-vectors <download-dir>
+```
+
+`<download-dir>` is any folder outside the repository (about 500 MB is downloaded into it, and kept for the next runs). The script checks each source against a fixed checksum and stops if one has changed. The same sources always give the same file.

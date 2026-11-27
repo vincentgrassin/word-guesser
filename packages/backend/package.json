@@ -8,6 +8,7 @@
     "dev": "nodemon --watch src --exec tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node ./build/index.js",
+    "build-vectors": "tsx scripts/build-vectors.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",

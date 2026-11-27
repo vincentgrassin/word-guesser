@@ -44,3 +44,8 @@ Against a small hand-made fixture file (a few words with chosen vectors, written
 - All backend tests pass.
 
 ## Comments
+
+### 2026-11-27 - Notes from ticket 01
+
+- Stored words are lowercase with `œ` -> `oe` and `æ` -> `ae`: normalise the input the same way before the lookup.
+- After int8 rounding, vectors are only approximately unit length: precompute each norm at load time and divide the dot product by both norms.

@@ -1,6 +1,6 @@
 # 01 - Generate the word vector file
 
-Status: open
+Status: done
 Blocked by: none
 
 ## What
@@ -44,3 +44,20 @@ The accent-insensitive lookup index is built when the file is loaded, not stored
 - The script prints the number of forms kept and how many of them are lemmas.
 
 ## Comments
+
+### 2026-11-27 - Implemented (not committed yet)
+
+Result: 77,653 forms (33,493 lemmas), 23.0 MB. Two runs, one from fresh downloads, give the same SHA-256 (`385de738...`).
+
+Deviations from the plan, found by inspecting the output:
+
+- **400,000 fastText lines instead of 200,000**: with 200,000, common inflections were missing (`mangerons`). The file stays within the 15-30 MB target.
+- **No frequency threshold**: the fastText cut-off already limits the list to words used on the web; every Lexique form with a vector is kept.
+- **Ligatures**: Lexique spells `coeur`, the web mostly `cœur`. Both are normalised to `oe` / `ae` before matching, so the stored words use `oe`. The lookup (ticket 02) must normalise its input the same way.
+- **Elided forms dropped** (`n'`, `qu'`).
+
+Known limits, accepted:
+
+- fastText splits words with an inner apostrophe (`aujourd'hui` -> `aujourd'` + `hui`): they are unknown and will show `?`.
+- Some grammatical words stay, because Lexique also lists them as verbs or adverbs (`est`, `a`, `pas`, `ne`). Harmless for scores; the bot will need its own filter.
+- Words newer than Lexique are missing (`smartphone`, `selfie`, `covid`, `wifi`), although fastText knows them. Adding fastText's frequent lowercase words automatically brings mostly noise (English words, HTML tokens, accent-less typos), so a hand-written allowlist would be the way, if wanted.
