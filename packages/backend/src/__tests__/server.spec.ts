@@ -324,6 +324,84 @@ describe('game server (WebSocket)', () => {
       expect(await alice.next('ERROR')).toMatch(/too many open games/i)
     })
 
+    // The bot plays at once, and always takes the first of its choices.
+    const instantBot = { botDelay: () => 0, botRandom: () => 0 }
+    const waitForBots = () => new Promise((resolve) => setTimeout(resolve, 30))
+
+    async function startSolo(options: Parameters<typeof buildServer>[0] = instantBot) {
+      await restartServer(options)
+      alice.send('CREATE_GAME', { content: soloGame })
+      return alice.next<Game>('CREATE_GAME')
+    }
+
+    it('plays the first round on its own, its word hidden until the player answers', async () => {
+      await startSolo()
+
+      const game = await alice.next<Game>('PLAY_ROUND')
+
+      const [botMove] = game.rounds[0].messages
+      expect(botMove.userId).toMatch(/^bot-/)
+      expect(botMove.content).toBeUndefined()
+    })
+
+    it('completes the round with both words once the player answers, then plays the next one', async () => {
+      const { gameId } = await startSolo()
+      await alice.next('PLAY_ROUND')
+
+      alice.send('PLAY_ROUND', { gameId, content: 'mer' })
+      const completed = await alice.next<Game>('PLAY_ROUND')
+      const nextRound = await alice.next<Game>('PLAY_ROUND')
+
+      const [round] = completed.rounds
+      expect(round.isComplete).toBe(true)
+      // The bot's first word: the first word it may play (plage), as botRandom is 0
+      expect(round.messages.map((m) => m.content)).toEqual(['plage', 'mer'])
+      expect(round.messagesSimilarity).toHaveLength(1)
+      expect(nextRound.rounds[1].messages.map((m) => m.userId)).toEqual([
+        expect.stringMatching(/^bot-/),
+      ])
+    })
+
+    it('wins when the player and the bot say the same word', async () => {
+      const { gameId } = await startSolo()
+      await alice.next('PLAY_ROUND')
+
+      alice.send('PLAY_ROUND', { gameId, content: 'plage' })
+
+      expect((await alice.next<Game>('PLAY_ROUND')).settings.status).toBe('win')
+      await waitForBots()
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.rounds).toHaveLength(1)
+    })
+
+    it('does not play once time is up', async () => {
+      const { gameId } = await startSolo({ ...instantBot, botDelay: () => 20 })
+      await alice.next('PLAY_ROUND')
+      alice.send('PLAY_ROUND', { gameId, content: 'mer' })
+      await alice.next('PLAY_ROUND')
+
+      // The clock started with the first complete round
+      vi.setSystemTime(Date.now() + 31 * MINUTE)
+      await waitForBots()
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.rounds).toHaveLength(1)
+    })
+
+    it('plays the move it had not played yet after a restart', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'word-guesser-'))
+      const stateFile = join(dir, 'state.json')
+      // A bot too slow to play before the restart
+      await startSolo({ stateFile, botDelay: () => 60 * MINUTE })
+
+      await restartServer({ stateFile, ...instantBot })
+      await waitForBots()
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.rounds[0].messages.map((m) => m.userId)).toEqual([expect.stringMatching(/^bot-/)])
+      rmSync(dir, { recursive: true, force: true })
+    })
+
     it('keeps the bot after a restart', async () => {
       const dir = mkdtempSync(join(tmpdir(), 'word-guesser-'))
       const stateFile = join(dir, 'state.json')

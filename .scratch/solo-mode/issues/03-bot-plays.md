@@ -1,6 +1,6 @@
 # 03 - The bot plays its rounds
 
-Status: open
+Status: done
 Blocked by: 01, 02
 
 ## What
@@ -31,3 +31,10 @@ The server plays for the bot seats, at the start of each round.
 - A Solo game can be played to the end against the bot, and the tests above pass.
 
 ## Comments
+
+### 2026-11-27 - Implemented
+
+- `playWord` in `server.ts` is the one path for a move, human or bot. After each move it schedules the bots of the game, so a completed round starts the bot's next move.
+- `botDelay` and `botRandom` are `ServerOptions`; the default delay is 1 to 3 s.
+- The bot only reads completed rounds. Note: `playedWords` comes from completed rounds too, so the human's word of the round being played is never excluded from the bot's choices (excluding it would leak it, and could prevent a match).
+- Mutation check: removing the out-of-time guard, or the scheduling at startup, makes its test fail.

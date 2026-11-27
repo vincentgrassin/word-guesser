@@ -43,7 +43,7 @@ import {
 } from './helpers.js'
 import { loadState, saveState } from './persistence.js'
 import { createTokenBucket, RateLimit, TokenBucket } from './rateLimit.js'
-import { isSemanticOn } from './semantic.js'
+import { chooseBotWord, isSemanticOn } from './semantic.js'
 
 // Largest WebSocket message accepted, in bytes: game messages are a few hundred.
 const MAX_MESSAGE_SIZE = 16 * 1024
@@ -83,11 +83,23 @@ const DEFAULT_LIMITS: Required<LimitOptions> = {
 type ServerOptions = LimitOptions & {
   // Where the state is saved, so games survive a restart. Nothing is saved without it.
   stateFile?: string
+  // How long a bot waits before playing, in milliseconds, and where its choices
+  // come from: tests make both fixed.
+  botDelay?: () => number
+  botRandom?: () => number
 }
+
+// A bot answers 1 to 3 s after a round starts, so it feels like a player.
+const defaultBotDelay = () => 1000 + Math.random() * 2000
 
 // Each call returns an independent server with its own in-memory state,
 // so tests can start from a clean slate.
-export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
+export function buildServer({
+  stateFile,
+  botDelay = defaultBotDelay,
+  botRandom = Math.random,
+  ...limits
+}: ServerOptions = {}) {
   const options = { ...DEFAULT_LIMITS, ...limits }
   const server = fastify()
   const saved = stateFile ? loadState(stateFile) : undefined
@@ -188,6 +200,75 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
     })
   }
 
+  // One move, from a connected player or a bot: same rules, same broadcast.
+  const playWord = async (game: Game, userId: string, word: string, date: number) => {
+    touch(game)
+    await updateRounds(game, {
+      event: 'PLAY_ROUND',
+      gameId: game.gameId,
+      content: word,
+      date,
+      userId,
+      messageId: generateUID(),
+    })
+    updateGameStatus(game)
+    updateGameStartTime(game)
+    broadcastGame(players, 'PLAY_ROUND', game)
+    // The round may be complete: the bots then start the next one
+    scheduleBotMoves(game)
+  }
+
+  // Bot moves waiting for their delay, keyed by game id and bot id.
+  const pendingBotMoves = new Map<string, ReturnType<typeof setTimeout>>()
+
+  const hasPlayedCurrentRound = (game: Game, userId: string) => {
+    const round = game.rounds[game.rounds.length - 1]
+    return !!round && !round.isComplete && round.messages.some((m) => m.userId === userId)
+  }
+
+  // Each bot of the game that has not played the round yet plays after its delay.
+  const scheduleBotMoves = (game: Game) => {
+    if (!canPlayRound(game)) return
+    game.players
+      .filter((player) => player.isBot)
+      .forEach((bot) => {
+        const key = `${game.gameId}/${bot.userId}`
+        if (pendingBotMoves.has(key) || hasPlayedCurrentRound(game, bot.userId)) return
+        const timer = setTimeout(() => {
+          pendingBotMoves.delete(key)
+          playBotMove(game.gameId, bot.userId).catch((error) =>
+            console.error(`[ERROR]: Bot ${bot.userId} failed to play`, error),
+          )
+        }, botDelay())
+        pendingBotMoves.set(key, timer)
+      })
+  }
+
+  // The game may have changed during the delay: check again before playing.
+  const playBotMove = async (gameId: string, botId: string) => {
+    const game = findGame(gameId, games)
+    if (!game || !canPlayRound(game) || isOutOfTime(game, Date.now())) return
+    if (!isPlayerInGame(botId, game) || hasPlayedCurrentRound(game, botId)) return
+
+    // Completed rounds only: the bot never reads the words of the round being played.
+    const completed = game.rounds.filter((round) => round.isComplete)
+    const wordsWhere = (isWanted: (userId: string) => boolean) =>
+      completed.flatMap((round) =>
+        round.messages.filter((m) => isWanted(m.userId)).map((m) => m.content ?? ''),
+      )
+    const word = chooseBotWord({
+      ownWords: wordsWhere((userId) => userId === botId),
+      partnerWords: wordsWhere((userId) => userId !== botId),
+      playedWords: wordsWhere(() => true),
+      level: game.settings.botLevel ?? 'normal',
+      random: botRandom,
+    })
+    if (word) await playWord(game, botId, word, Date.now())
+  }
+
+  // After a restart, the bots play the moves they had not played yet.
+  games.forEach(scheduleBotMoves)
+
   const clockTimer = setInterval(endGamesOutOfTime, CLOCK_INTERVAL)
   const cleanupTimer = setInterval(() => {
     deleteExpiredGames()
@@ -203,6 +284,8 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
   server.addHook('onClose', async () => {
     clearInterval(clockTimer)
     clearInterval(cleanupTimer)
+    pendingBotMoves.forEach((timer) => clearTimeout(timer))
+    pendingBotMoves.clear()
     save()
   })
 
@@ -294,6 +377,8 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
               creatorAddress.set(newGame.gameId, address)
               touch(newGame)
               broadcastGame(players, event, newGame)
+              // A Solo game starts at once: its bot plays the first round
+              scheduleBotMoves(newGame)
               break
             }
             case 'JOIN_GAME': {
@@ -313,16 +398,7 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
               if (!word) return refuse('Empty word')
               if (!isSingleWord(word)) return refuse('One word only')
 
-              touch(game)
-              await updateRounds(game, {
-                ...message,
-                content: word,
-                userId,
-                messageId: generateUID(),
-              })
-              updateGameStatus(game)
-              updateGameStartTime(game)
-              broadcastGame(players, event, game)
+              await playWord(game, userId, word, message.date)
               break
             }
             case 'QUIT_GAME': {
