@@ -19,8 +19,6 @@ type Vocabulary = WordVectors & {
 export const BOT = {
   // Among the most frequent words only: rare words feel like cheating.
   vocabularySize: 20_000,
-  // Drops most grammatical words (pas, est, ne, si, là).
-  minLength: 4,
   // Round 1, with no word to start from: a random one among the most frequent.
   firstWords: 2_000,
   // How many of the nearest words each level picks from, at random.
@@ -30,7 +28,8 @@ export const BOT = {
 // Undefined until a vector file is loaded: semantics are off (degraded mode).
 let vocabulary: Vocabulary | undefined
 
-const removeAccents = (word: string) => word.normalize('NFD').replace(/[̀-ͯ]/g, '')
+// NFD splits "é" into "e" + a combining accent (a Unicode mark), then the mark goes
+const removeAccents = (word: string) => word.normalize('NFD').replace(/\p{M}/gu, '')
 
 // The spelling words are stored with (see scripts/build-vectors.ts).
 const normaliseSpelling = (word: string) =>
@@ -44,7 +43,7 @@ const buildVocabulary = (vectors: WordVectors): Vocabulary => {
   const botWords: number[] = []
   words.forEach((word, i) => {
     // Lemmas only, so the bot does not answer "montagnes" to "montagne"
-    if (i < BOT.vocabularySize && isLemma[i] && [...word].length >= BOT.minLength) botWords.push(i)
+    if (i < BOT.vocabularySize && isLemma[i]) botWords.push(i)
     index.set(word, i)
     // Words are sorted by decreasing frequency: the first one wins.
     const key = removeAccents(word)

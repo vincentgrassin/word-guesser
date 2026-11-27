@@ -29,7 +29,6 @@ The bot is a seat any game could hold: the AI Duel mode will reuse it (see `.scr
 - **Vocabulary** it may play, from `vectors.bin` (no regeneration):
   - lemmas only (`isLemma`), so it does not answer `montagnes` to `montagne`;
   - among the 20,000 most frequent words (the file is sorted by frequency);
-  - at least 4 letters (drops `pas`, `est`, `ne`, `si`, `là`);
   - never a word already said in the game, by anyone (compared after the same normalisation as the lookup).
 - **Round 1**: a random word among the 2,000 most frequent words of that vocabulary.
 - **Next rounds**: the average (midpoint) of the vectors of the two words of the last completed round, its own and the human's; then a word among the nearest ones, depending on the level.

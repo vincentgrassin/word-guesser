@@ -357,14 +357,14 @@ describe('game server (WebSocket)', () => {
       const { gameId } = await startSolo()
       await alice.next('PLAY_ROUND')
 
-      alice.send('PLAY_ROUND', { gameId, content: 'mer' })
+      alice.send('PLAY_ROUND', { gameId, content: 'chaise' })
       const completed = await alice.next<Game>('PLAY_ROUND')
       const nextRound = await alice.next<Game>('PLAY_ROUND')
 
       const [round] = completed.rounds
       expect(round.isComplete).toBe(true)
-      // The bot's first word: the first word it may play (plage), as botRandom is 0
-      expect(round.messages.map((m) => m.content)).toEqual(['plage', 'mer'])
+      // The bot's first word: the most frequent word it may play (mer), as botRandom is 0
+      expect(round.messages.map((m) => m.content)).toEqual(['mer', 'chaise'])
       expect(round.messagesSimilarity).toHaveLength(1)
       expect(nextRound.rounds[1].messages.map((m) => m.userId)).toEqual([
         expect.stringMatching(/^bot-/),
@@ -375,7 +375,7 @@ describe('game server (WebSocket)', () => {
       const { gameId } = await startSolo()
       await alice.next('PLAY_ROUND')
 
-      alice.send('PLAY_ROUND', { gameId, content: 'plage' })
+      alice.send('PLAY_ROUND', { gameId, content: 'mer' })
 
       expect((await alice.next<Game>('PLAY_ROUND')).settings.status).toBe('win')
       await waitForBots()
@@ -386,7 +386,7 @@ describe('game server (WebSocket)', () => {
     it('does not play once time is up', async () => {
       const { gameId } = await startSolo({ ...instantBot, botDelay: () => 20 })
       await alice.next('PLAY_ROUND')
-      alice.send('PLAY_ROUND', { gameId, content: 'mer' })
+      alice.send('PLAY_ROUND', { gameId, content: 'chaise' })
       await alice.next('PLAY_ROUND')
 
       // The clock started with the first complete round
@@ -414,7 +414,7 @@ describe('game server (WebSocket)', () => {
     it('is not sent to the other players, when created or played', async () => {
       const { gameId } = await startSolo()
       await alice.next('PLAY_ROUND')
-      alice.send('PLAY_ROUND', { gameId, content: 'mer' })
+      alice.send('PLAY_ROUND', { gameId, content: 'chaise' })
       await alice.next('PLAY_ROUND')
       // A basic game created afterwards is the first game Bob is sent
       alice.send('CREATE_GAME', { content: twoPlayerGame })

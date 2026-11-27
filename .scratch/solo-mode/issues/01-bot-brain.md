@@ -49,3 +49,7 @@ On a hand-made vector file (`src/__tests__/setup/wordVectors.ts`), extended with
 - Real file, about 3 ms per move. `montagne + mer`: easy `plaine`, normal `océan` / `plaine`, hard `rivage` / `côte` / `forêt`. `femme + roi`: `fille`, `prince` / `reine`.
 - Side effect of the 4-letter minimum: good short words (`mer`, `feu`, `eau`, `roi`, `vin`) are never played by the bot, although it understands them when the human plays them. To decide with the user.
 - Hard sometimes picks odd words (`pipi`, `chiens`): accepted, the vocabulary has no categories by choice.
+
+### 2026-11-27 - Short words allowed
+
+Decision: the 4-letter minimum is removed, with nothing in its place. The bot may play any lemma among the 20,000 most frequent words, short nouns included (`mer`, `feu`, `eau`), and also grammatical words (`pas`, `est`) if they come out nearest.

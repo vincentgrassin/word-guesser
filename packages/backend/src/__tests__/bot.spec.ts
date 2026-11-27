@@ -15,9 +15,8 @@ const WORDS: WordVectorEntry[] = [
   lemma('mer', [1, 0, 0]),
   lemma('montagne', [0, 1, 0]),
   lemma('soleil', [0, 0, 1]),
-  // Right in the middle of mer and montagne, but the bot may not play them:
+  // Right in the middle of mer and montagne, but the bot may not play it:
   { word: 'montagnes', isLemma: false, vector: [1, 1, 0] },
-  lemma('col', [1, 1, 0]),
   // Near mer only
   lemma('marin', [1, 0, 0.1]),
   ...nearWords,
@@ -43,8 +42,8 @@ describe('chooseBotWord', () => {
     expect(chooseBotWord({ ...afterMerMontagne, level: 'easy' })).toBe('prochea')
   })
 
-  it('never plays a non-lemma, a word of 3 letters or less, or a word already said', () => {
-    // montagnes and col are closer to the middle than procheA
+  it('never plays a non-lemma or a word already said', () => {
+    // montagnes is closer to the middle than procheA
     expect(chooseBotWord({ ...afterMerMontagne, level: 'easy' })).toBe('prochea')
     expect(
       chooseBotWord({
@@ -86,8 +85,7 @@ describe('chooseBotWord', () => {
   it('plays a random frequent word in round 1', () => {
     const firstRound = { ownWords: [], partnerWords: [], playedWords: [], level: 'easy' as const }
 
-    // mer has only 3 letters: montagne is the first word the bot may play
-    expect(chooseBotWord({ ...firstRound, random: () => 0 })).toBe('montagne')
+    expect(chooseBotWord({ ...firstRound, random: () => 0 })).toBe('mer')
     expect(chooseBotWord({ ...firstRound, random: () => 0.999 })).toBe('prochey')
   })
 
