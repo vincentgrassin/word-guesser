@@ -49,7 +49,7 @@ export type MessageSimilarity = {
 // Hyphens and apostrophes are fine (arc-en-ciel, aujourd'hui).
 export const isSingleWord = (word: string) => !/\s/.test(word.trim())
 
-export type ScoreLevel ='low' | 'medium' | 'high' | 'extreme'
+export type ScoreLevel = 'low' | 'medium' | 'high' | 'extreme'
 
 // Calibrated for the backend's word vectors (fastText cc.fr.300, see
 // packages/backend/data): change them together with the vector file.
@@ -69,11 +69,18 @@ export type Round = {
   messagesSimilarity: MessageSimilarity[]
 }
 
+// How the Solo bot picks among the words nearest to the last round:
+// easy always takes the nearest one, so it converges fast with the player.
+export type BotLevel = 'easy' | 'normal' | 'hard'
+export const botLevels = new Set<BotLevel>(['easy', 'normal', 'hard'])
+
 export type GameProperties = {
   type: GameType
   maxPlayers: number
   duration: number
   name: string
+  // Solo games only
+  botLevel?: BotLevel
 }
 
 export type GameSettings = {
