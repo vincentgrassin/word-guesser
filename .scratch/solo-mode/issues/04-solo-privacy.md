@@ -1,6 +1,6 @@
 # 04 - A Solo game belongs to its creator
 
-Status: open
+Status: done
 Blocked by: 02
 
 ## What

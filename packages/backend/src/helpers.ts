@@ -370,3 +370,7 @@ export const buildBot = (level: BotLevel): User => ({
   userName: `Bot (${level})`,
   isBot: true,
 })
+
+// A Solo game belongs to its creator: nobody else is sent it or may join it.
+export const canSeeGame = (userId: string, game: Game) =>
+  game.settings.type !== 'solo' || game.settings.createdBy === userId

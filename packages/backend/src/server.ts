@@ -21,6 +21,7 @@ import {
   broadcastToOne,
   buildInitialGame,
   buildBot,
+  canSeeGame,
   canDeleteGame,
   canPlayRound,
   clientAddress,
@@ -158,6 +159,9 @@ export function buildServer({
 
   const touch = (game: Game) => lastActivity.set(game.gameId, Date.now())
 
+  // The connected players a game is sent to: everyone, except for a Solo game.
+  const audienceOf = (game: Game) => players.filter((player) => canSeeGame(player.userId, game))
+
   const deleteGame = (gameId: string) => {
     lastActivity.delete(gameId)
     creatorAddress.delete(gameId)
@@ -179,7 +183,7 @@ export function buildServer({
       .forEach((game) => {
         updateGameStatusTo(game, 'loss')
         touch(game)
-        broadcastGame(players, 'END_GAME', game)
+        broadcastGame(audienceOf(game), 'END_GAME', game)
       })
   }
 
@@ -188,7 +192,7 @@ export function buildServer({
     const expired = games.filter((game) =>
       isGameExpired(game, lastActivity.get(game.gameId) ?? 0, now),
     )
-    expired.forEach((game) => broadcast(players, 'DELETE_GAME', deleteGame(game.gameId)))
+    expired.forEach((game) => broadcast(audienceOf(game), 'DELETE_GAME', deleteGame(game.gameId)))
   }
 
   // A full bucket with no open connection carries no information: drop it.
@@ -213,7 +217,7 @@ export function buildServer({
     })
     updateGameStatus(game)
     updateGameStartTime(game)
-    broadcastGame(players, 'PLAY_ROUND', game)
+    broadcastGame(audienceOf(game), 'PLAY_ROUND', game)
     // The round may be complete: the bots then start the next one
     scheduleBotMoves(game)
   }
@@ -343,7 +347,9 @@ export function buildServer({
         broadcastToOne(
           newPlayer,
           'LIST_GAMES',
-          games.map((game) => gameForPlayer(game, userId)),
+          games
+            .filter((game) => canSeeGame(userId, game))
+            .map((game) => gameForPlayer(game, userId)),
         )
 
         const messageBucket = createTokenBucket(options.messageRate)
@@ -376,17 +382,18 @@ export function buildServer({
               games.push(newGame)
               creatorAddress.set(newGame.gameId, address)
               touch(newGame)
-              broadcastGame(players, event, newGame)
+              broadcastGame(audienceOf(newGame), event, newGame)
               // A Solo game starts at once: its bot plays the first round
               scheduleBotMoves(newGame)
               break
             }
             case 'JOIN_GAME': {
               if (!game) return refuse('Unknown game')
+              if (!canSeeGame(userId, game)) return refuse('This game is private')
               touch(game)
               addPlayerToGame(game, findPlayerById(userId, players))
               updateGameStatus(game)
-              broadcastGame(players, event, game)
+              broadcastGame(audienceOf(game), event, game)
               break
             }
             case 'PLAY_ROUND': {
@@ -403,15 +410,20 @@ export function buildServer({
             }
             case 'QUIT_GAME': {
               if (!game) return refuse('Unknown game')
+              // Without its player, a Solo game would only hold its bot
+              if (game.settings.type === 'solo' && game.settings.createdBy === userId) {
+                broadcast(audienceOf(game), 'DELETE_GAME', deleteGame(game.gameId))
+                break
+              }
               touch(game)
               removePlayerFromGame(userId, game)
-              broadcastGame(players, event, game)
+              broadcastGame(audienceOf(game), event, game)
               break
             }
             case 'DELETE_GAME': {
               if (!game) return refuse('Unknown game')
               if (!canDeleteGame(userId, game)) return refuse('Not allowed to delete this game')
-              broadcast(players, event, deleteGame(game.gameId))
+              broadcast(audienceOf(game), event, deleteGame(game.gameId))
               break
             }
             case 'UPDATE_PLAYER': {
@@ -422,7 +434,7 @@ export function buildServer({
                 const playerIndex = game.players.findIndex((p) => p.userId === player.userId)
                 if (playerIndex !== -1) {
                   game.players[playerIndex] = cleanPlayer(player)
-                  broadcastGame(players, event, game)
+                  broadcastGame(audienceOf(game), event, game)
                 }
               })
               break
@@ -468,7 +480,7 @@ export function buildServer({
                 if (hasLeftGame) {
                   removePlayerFromGame(disconnectedUserId, game)
                 }
-                broadcastGame(players, 'CLOSE_CONNECTION', game)
+                broadcastGame(audienceOf(game), 'CLOSE_CONNECTION', game)
               }
             })
           }

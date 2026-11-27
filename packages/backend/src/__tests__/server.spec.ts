@@ -17,6 +17,8 @@ type Client = {
   ws: WebSocket
   send: (event: SocketEvent, fields?: { gameId?: string; content?: string }) => void
   next: <T = unknown>(event: SocketEvent) => Promise<T>
+  // The messages of this event received and not yet taken with next
+  received: (event: SocketEvent) => SocketPayload[]
   close: () => Promise<void>
   // Resolves with the close code when the server closes the connection
   closedByServer: Promise<number>
@@ -53,6 +55,7 @@ async function connect(
     ws,
     closedByServer,
     send: (event, fields = {}) => ws.send(JSON.stringify({ event, date: Date.now(), ...fields })),
+    received: (event) => inbox.filter((m) => m.event === event),
     async next<T>(event: SocketEvent) {
       for (;;) {
         const index = inbox.findIndex((m) => m.event === event)
@@ -328,6 +331,12 @@ describe('game server (WebSocket)', () => {
     const instantBot = { botDelay: () => 0, botRandom: () => 0 }
     const waitForBots = () => new Promise((resolve) => setTimeout(resolve, 30))
 
+    // A Solo game is only sent to its creator: look at it from another tab of hers.
+    async function gamesSeenByCreator(): Promise<Game[]> {
+      const otherTab = await connect(server, 'alice')
+      return otherTab.next<Game[]>('LIST_GAMES')
+    }
+
     async function startSolo(options: Parameters<typeof buildServer>[0] = instantBot) {
       await restartServer(options)
       alice.send('CREATE_GAME', { content: soloGame })
@@ -370,7 +379,7 @@ describe('game server (WebSocket)', () => {
 
       expect((await alice.next<Game>('PLAY_ROUND')).settings.status).toBe('win')
       await waitForBots()
-      const [game] = await gamesSeenByNewcomer()
+      const [game] = await gamesSeenByCreator()
       expect(game.rounds).toHaveLength(1)
     })
 
@@ -384,7 +393,7 @@ describe('game server (WebSocket)', () => {
       vi.setSystemTime(Date.now() + 31 * MINUTE)
       await waitForBots()
 
-      const [game] = await gamesSeenByNewcomer()
+      const [game] = await gamesSeenByCreator()
       expect(game.rounds).toHaveLength(1)
     })
 
@@ -397,9 +406,42 @@ describe('game server (WebSocket)', () => {
       await restartServer({ stateFile, ...instantBot })
       await waitForBots()
 
-      const [game] = await gamesSeenByNewcomer()
+      const [game] = await gamesSeenByCreator()
       expect(game.rounds[0].messages.map((m) => m.userId)).toEqual([expect.stringMatching(/^bot-/)])
       rmSync(dir, { recursive: true, force: true })
+    })
+
+    it('is not sent to the other players, when created or played', async () => {
+      const { gameId } = await startSolo()
+      await alice.next('PLAY_ROUND')
+      alice.send('PLAY_ROUND', { gameId, content: 'mer' })
+      await alice.next('PLAY_ROUND')
+      // A basic game created afterwards is the first game Bob is sent
+      alice.send('CREATE_GAME', { content: twoPlayerGame })
+
+      expect((await bob.next<Game>('CREATE_GAME')).settings.type).toBe('basic')
+      expect(bob.received('PLAY_ROUND')).toHaveLength(0)
+      expect(await gamesSeenByNewcomer()).toEqual([
+        expect.objectContaining({ settings: expect.objectContaining({ type: 'basic' }) }),
+      ])
+    })
+
+    it("refuses another player's JOIN_GAME", async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { gameId } = await startSolo()
+
+      bob.send('JOIN_GAME', { gameId })
+
+      expect(await bob.next('ERROR')).toBe('This game is private')
+    })
+
+    it('is deleted when its player quits it', async () => {
+      const { gameId } = await startSolo()
+
+      alice.send('QUIT_GAME', { gameId })
+
+      expect(await alice.next('DELETE_GAME')).toBe(gameId)
+      expect(await gamesSeenByCreator()).toEqual([])
     })
 
     it('keeps the bot after a restart', async () => {
@@ -411,7 +453,7 @@ describe('game server (WebSocket)', () => {
 
       await restartServer({ stateFile })
 
-      const [solo] = (await gamesSeenByNewcomer()).filter((g) => g.settings.type === 'solo')
+      const [solo] = (await gamesSeenByCreator()).filter((g) => g.settings.type === 'solo')
       expect(solo.players[1]).toMatchObject({ userName: 'Bot (hard)', isBot: true })
       rmSync(dir, { recursive: true, force: true })
     })

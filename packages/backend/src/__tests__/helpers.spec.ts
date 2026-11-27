@@ -4,6 +4,7 @@ import {
   areAllMessagesEquals,
   broadcast,
   buildInitialGame,
+  canSeeGame,
   cleanPlayer,
   findPlayer,
   findPlayerById,
@@ -554,5 +555,18 @@ describe('broadcast', () => {
     broadcast([a, b], 'DELETE_GAME', 'g1')
     expect(sentTo(a)).toEqual([{ event: 'DELETE_GAME', payload: 'g1' }])
     expect(sentTo(b)).toEqual([{ event: 'DELETE_GAME', payload: 'g1' }])
+  })
+})
+
+describe('canSeeGame', () => {
+  it('lets everyone see a basic game', () => {
+    expect(canSeeGame('bob', buildGame({ settings: { createdBy: 'alice' } }))).toBe(true)
+  })
+
+  it('lets only its creator see a Solo game', () => {
+    const solo = buildGame({ settings: { type: 'solo', createdBy: 'alice' } })
+
+    expect(canSeeGame('alice', solo)).toBe(true)
+    expect(canSeeGame('bob', solo)).toBe(false)
   })
 })
