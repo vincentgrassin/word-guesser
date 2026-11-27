@@ -1,11 +1,6 @@
 import type { ResponseMessage, Round } from '@word-guesser/shared'
 import { describe, expect, it } from 'vitest'
-import {
-  computeGameStatusIcon,
-  formatDuration,
-  formatTime,
-  sortRoundMessages,
-} from '../helpers'
+import { computeGameStatusIcon, formatDuration, formatTime, sortRoundMessages } from '../helpers'
 
 const message = (userId: string, messageId: string): ResponseMessage => ({
   event: 'PLAY_ROUND',

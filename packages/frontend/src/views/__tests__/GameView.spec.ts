@@ -156,7 +156,12 @@ describe('Game page', () => {
     const almostOver = buildGame({
       gameId: 'g1',
       players: [alice, bob],
-      settings: { name: 'Duo', status: 'started', duration, startedAt: Date.now() - duration + 1500 },
+      settings: {
+        name: 'Duo',
+        status: 'started',
+        duration,
+        startedAt: Date.now() - duration + 1500,
+      },
     })
     fakeGameServer.games = [almostOver]
     app = await renderApp('/game/g1')
