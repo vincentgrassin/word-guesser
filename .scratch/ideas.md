@@ -9,6 +9,7 @@ Not specified yet. When one is picked up, it gets its own folder under `.scratch
 - **AI Duel**: Duel where any seat can be a bot. Comes almost for free once Solo (bot seats) and Duel (teams) exist.
 - **Expert bot level** using an LLM instead of the word vectors.
 - **Bot personalities** for Solo: literal, poetic, stubborn (moves little). One bot gets predictable fast.
+- **Words the bot never plays**, if it plays grammatical or filler words too often (it played `pourquoi` in round 1). Today it may play any lemma among the 20,000 most frequent words. A list in `semantic.ts`, built from the real file: grammatical and filler words (`pas`, `est`, `alors`, `très`, `jamais`, `pourquoi`), conjugated forms marked as lemmas (`sais`, `doit`, `trouvé`), single letters and abbreviations (`i`, `etc`, `mme`), English (`to`, `out`), rude words (`con`, `cul`). Plus letters only and at least 2 letters. Keep short nouns playable (`mer`, `feu`, `eau`): a 4-letter minimum was tried and removed for that reason.
 - **3+ players with partial points**: every pair that matches scores, since getting everyone on the same word gets very hard.
 - **Secret word**: a hidden target word, players get closer to it with the proximity scores (solo or co-op). Same infrastructure, different game.
 
