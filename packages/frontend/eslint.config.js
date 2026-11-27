@@ -17,7 +17,13 @@ export default [
 
   ...pluginVue.configs['flat/essential'],
   ...vueTsEslintConfig(),
-  
+
+  {
+    // The editor sees several TypeScript projects in the monorepo: point at this one.
+    name: 'app/tsconfig-root',
+    languageOptions: { parserOptions: { tsconfigRootDir: import.meta.dirname } },
+  },
+
   {
     ...pluginVitest.configs.recommended,
     files: ['src/**/__tests__/*'],

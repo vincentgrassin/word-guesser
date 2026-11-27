@@ -3,7 +3,9 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "target": "es2022"
+    "target": "es2022",
+    // The scripts import from ../src
+    "rootDir": ".."
   },
   "include": ["."],
   "exclude": []
