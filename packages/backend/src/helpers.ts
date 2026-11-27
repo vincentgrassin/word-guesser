@@ -169,7 +169,7 @@ export const updateRounds = async (game: Game, message: ResponseMessage) => {
     } else {
       updateCurrentRound(currentRound, message, playersNumber)
       if (currentRound.isComplete) {
-        currentRound.messagesSimilarity = await calculateMessageSimilarities(currentRound)
+        currentRound.messagesSimilarity = calculateMessageSimilarities(currentRound)
       }
     }
   }
@@ -197,18 +197,11 @@ const updateCurrentRound = (round: Round, message: ResponseMessage, playersNumbe
   }
 }
 
-const calculateMessageSimilarities = async (round: Round): Promise<MessageSimilarity[]> => {
-  let similarities: MessageSimilarity[] = []
-  for (let i = 0; i < round.messages.length - 1; i++) {
-    const sourceMessage = round.messages[i]
-    const targetMessages = round.messages.slice(i + 1)
-    const semanticScores = await getSemanticScore(sourceMessage, targetMessages)
-    if (semanticScores) {
-      similarities = [...similarities, ...semanticScores]
-    }
-  }
-  return similarities
-}
+// Every pair of messages of the round, each pair once.
+const calculateMessageSimilarities = (round: Round): MessageSimilarity[] =>
+  round.messages
+    .slice(0, -1)
+    .flatMap((source, i) => getSemanticScore(source, round.messages.slice(i + 1)))
 
 // A game is played only while the table is full: it waits ('opened') otherwise.
 // A finished game stays finished.

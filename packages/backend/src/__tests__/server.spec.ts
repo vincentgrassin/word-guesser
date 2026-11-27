@@ -1,12 +1,15 @@
 import type { Game, SocketEvent, SocketPayload, WebSocket } from '@word-guesser/shared'
 import type { FastifyInstance } from 'fastify'
-import { http, HttpResponse } from 'msw'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { loadSemantic } from '../semantic.js'
 import { buildServer } from '../server.js'
-import { HUGGING_FACE_URL, mswServer } from './setup/msw.js'
+import { writeTestVectors } from './setup/wordVectors.js'
+
+const vectors = writeTestVectors()
+afterAll(() => vectors.cleanup())
 
 // A test client: a real WebSocket connected to the server (in memory, no port),
 // which keeps every message it receives so tests can wait for a given event.
@@ -110,9 +113,8 @@ describe('game server (WebSocket)', () => {
   }
 
   beforeEach(async () => {
-    vi.stubEnv('ENABLE_SEMANTIC_CHECK', '1')
-    vi.stubEnv('HUGGING_FACE_SEMANTIC_API', HUGGING_FACE_URL)
-    vi.stubEnv('HUGGING_FACE_TOKEN', 'test-token')
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    loadSemantic(vectors.path)
 
     server = buildServer()
     await server.ready()
@@ -175,26 +177,29 @@ describe('game server (WebSocket)', () => {
     expect(game.settings.startedAt).toEqual(expect.any(Number))
   })
 
-  it('scores a round with Hugging Face when the words differ', async () => {
-    mswServer.use(http.post(HUGGING_FACE_URL, () => HttpResponse.json([0.73])))
+  it('scores how close the words of a complete round are', async () => {
     const { gameId } = await startGame()
 
-    const game = await playRound(gameId, 'apple', 'pear')
+    const game = await playRound(gameId, 'mer', 'plage')
 
     expect(game.settings.status).toBe('started')
     const [round] = game.rounds
-    expect(round.messages.map((m) => m.content)).toEqual(['apple', 'pear'])
+    expect(round.messages.map((m) => m.content)).toEqual(['mer', 'plage'])
     expect(round.messagesSimilarity).toEqual([
-      { sourceId: round.messages[0].messageId, targetId: round.messages[1].messageId, score: 0.73 },
+      {
+        sourceId: round.messages[0].messageId,
+        targetId: round.messages[1].messageId,
+        score: expect.closeTo(0.6, 2),
+      },
     ])
   })
 
-  it('still plays the round when Hugging Face is down', async () => {
+  it('still plays the round when semantics are off', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    mswServer.use(http.post(HUGGING_FACE_URL, () => HttpResponse.error()))
+    loadSemantic(join(vectors.dir, 'missing.bin'))
     const { gameId } = await startGame()
 
-    const game = await playRound(gameId, 'apple', 'pear')
+    const game = await playRound(gameId, 'mer', 'plage')
 
     expect(game.rounds[0].isComplete).toBe(true)
     expect(game.rounds[0].messagesSimilarity).toEqual([])

@@ -9,6 +9,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 import { createGunzip } from 'node:zlib'
+import { encodeWordVectors } from '../src/wordVectors.js'
 
 const FASTTEXT = {
   url: 'https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.fr.300.vec.gz',
@@ -121,41 +122,6 @@ const readFastText = async (path: string, wanted: Set<string>) => {
   return vectors
 }
 
-// Normalised to unit length, then scaled to int8.
-const quantise = (vector: Float64Array) => {
-  const norm = Math.hypot(...vector) || 1
-  return Int8Array.from(vector, (x) => Math.max(-127, Math.min(127, Math.round((x / norm) * 127))))
-}
-
-// Little-endian: uint32 header length, JSON header, words (uint8 length, UTF-8, uint8 flags),
-// then count * dim int8 values in the same order.
-const encode = (forms: Form[], vectors: Map<string, Float64Array>) => {
-  const header = Buffer.from(
-    JSON.stringify({
-      version: 1,
-      dim: FASTTEXT.dim,
-      count: forms.length,
-      source: `fastText cc.fr.300 (CC BY-SA 3.0), first ${FASTTEXT.lines} words`,
-      lexique: 'Lexique 3.83 (CC BY-SA 4.0)',
-    }),
-  )
-  const headerLength = Buffer.alloc(4)
-  headerLength.writeUInt32LE(header.length)
-
-  const words = forms.flatMap(({ word, isLemma }) => {
-    const bytes = Buffer.from(word, 'utf8')
-    if (bytes.length > 255) throw new Error(`"${word}" is too long`)
-    return [Buffer.from([bytes.length]), bytes, Buffer.from([isLemma ? 1 : 0])]
-  })
-
-  const values = Buffer.alloc(forms.length * FASTTEXT.dim)
-  forms.forEach(({ word }, i) => {
-    values.set(new Uint8Array(quantise(vectors.get(word)!).buffer), i * FASTTEXT.dim)
-  })
-
-  return Buffer.concat([headerLength, header, ...words, values])
-}
-
 const main = async () => {
   const dir = process.argv[2]
   if (!dir) throw new Error('Usage: pnpm --filter backend build-vectors <download-dir>')
@@ -169,7 +135,13 @@ const main = async () => {
     .filter((f) => vectors.has(f.word))
     .sort((a, b) => b.frequency - a.frequency || (a.word < b.word ? -1 : a.word > b.word ? 1 : 0))
 
-  const file = encode(forms, vectors)
+  const file = encodeWordVectors(
+    forms.map(({ word, isLemma }) => ({ word, isLemma, vector: vectors.get(word)! })),
+    {
+      source: `fastText cc.fr.300 (CC BY-SA 3.0), first ${FASTTEXT.lines} words`,
+      lexique: 'Lexique 3.83 (CC BY-SA 4.0)',
+    },
+  )
   mkdirSync(dirname(OUTPUT), { recursive: true })
   writeFileSync(OUTPUT, file)
   const lemmas = forms.filter((f) => f.isLemma).length

@@ -39,7 +39,9 @@ const getMaxScore = (messageId: string, round: Round) => {
   if (!messageId) return 0
   const score = round.messagesSimilarity.reduce(
     (max, { sourceId, targetId, score }) =>
-      messageId && (sourceId === messageId || targetId === messageId) ? Math.max(max, score) : max,
+      score !== null && (sourceId === messageId || targetId === messageId)
+        ? Math.max(max, score)
+        : max,
     0,
   )
   return score

@@ -1,9 +1,12 @@
 import dotenv from 'dotenv'
+import { loadSemantic } from './semantic.js'
 import { buildServer } from './server.js'
 
 dotenv.config()
 
 console.info('[INFO]: Starting server')
+// Without the word vectors the game still runs, without proximity scores
+loadSemantic()
 // Without STATE_FILE, games live in memory only and are lost on restart
 const server = buildServer({ stateFile: process.env.STATE_FILE || undefined })
 

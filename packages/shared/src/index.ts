@@ -41,7 +41,8 @@ export type ResponseMessage = RequestMessage & { userId: string; messageId: stri
 export type MessageSimilarity = {
   sourceId: string
   targetId: string
-  score: number
+  // null: at least one of the two words is unknown
+  score: number | null
 }
 
 export type Round = {

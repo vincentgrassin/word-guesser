@@ -23,10 +23,10 @@ import {
 import { getSemanticScore } from '../semantic.js'
 import { buildGame, buildMessage, buildPlayer, sentTo } from './setup/factories.js'
 
-// Rounds call the semantic API when they complete: replace it with a stub here.
-// The real call is covered with MSW in semantic.spec.ts and server.spec.ts.
+// Rounds are scored when they complete: replace the scoring with a stub here.
+// The real scoring is covered in semantic.spec.ts and server.spec.ts.
 vi.mock('../semantic.js', () => ({
-  getSemanticScore: vi.fn(async () => [{ sourceId: 'a', targetId: 'b', score: 0.9 }]),
+  getSemanticScore: vi.fn(() => [{ sourceId: 'a', targetId: 'b', score: 0.9 }]),
 }))
 
 const alice = { userId: 'alice', userName: 'Alice' }

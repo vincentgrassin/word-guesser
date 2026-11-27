@@ -1,6 +1,6 @@
 # 02 - Replace Hugging Face with the local vector file
 
-Status: open
+Status: done
 Blocked by: 01 (file format)
 
 ## What
@@ -49,3 +49,12 @@ Against a small hand-made fixture file (a few words with chosen vectors, written
 
 - Stored words are lowercase with `œ` -> `oe` and `æ` -> `ae`: normalise the input the same way before the lookup.
 - After int8 rounding, vectors are only approximately unit length: precompute each norm at load time and divide the dot product by both norms.
+
+### 2026-11-27 - Implemented (not committed yet)
+
+- `src/wordVectors.ts` owns the file format (`encodeWordVectors` / `decodeWordVectors`). The generation script and the test fixtures use it too, so the format is written in one place. Regenerating `vectors.bin` through it gives the same SHA-256.
+- `src/semantic.ts`: `loadSemantic(path)` (called by `index.ts` at startup), `isSemanticOn()` (for `/health`, ticket 05), `getSemanticScore()` now synchronous. The lookup also turns the typographic apostrophe `’` (phone keyboards) into `'`.
+- The shared `MessageSimilarity.score` became `number | null` here, so the backend compiles; the frontend `getMaxScore` only skips `null` for now. The `?` display stays in ticket 03.
+- `msw` removed from the backend (the frontend still uses it).
+- Real file: loads in about 85 ms, about 50 MB of memory, 0.02 ms per pair.
+- Seen while testing: `ete / hiver` scores only 0.33, because `été` is mostly the past participle of `être` in the texts fastText learnt from. Words with a very frequent second meaning score lower than expected; accepted.

@@ -11,7 +11,6 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/__tests__/*.spec.ts'],
-    setupFiles: ['src/__tests__/setup/msw.ts'],
     unstubEnvs: true,
   },
 })

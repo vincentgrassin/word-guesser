@@ -1,58 +1,78 @@
-import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getSemanticScore } from '../semantic.js'
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getSemanticScore, isSemanticOn, loadSemantic } from '../semantic.js'
 import { buildMessage } from './setup/factories.js'
-import { HUGGING_FACE_URL, mswServer } from './setup/msw.js'
+import { writeTestVectors } from './setup/wordVectors.js'
 
-const source = buildMessage('alice', 'apple', { messageId: 'm-alice' })
-const targets = [
-  buildMessage('bob', 'pear', { messageId: 'm-bob' }),
-  buildMessage('carol', 'plum', { messageId: 'm-carol' }),
-]
+const vectors = writeTestVectors()
+afterAll(() => vectors.cleanup())
+
+const message = (userId: string, content: string) =>
+  buildMessage(userId, content, { messageId: `m-${userId}` })
+
+// The score of the pair of words, through the public entry point.
+const scoreOf = (a: string, b: string) =>
+  getSemanticScore(message('alice', a), [message('bob', b)])[0]?.score
 
 describe('getSemanticScore', () => {
   beforeEach(() => {
-    vi.stubEnv('ENABLE_SEMANTIC_CHECK', '1')
-    vi.stubEnv('HUGGING_FACE_SEMANTIC_API', HUGGING_FACE_URL)
-    vi.stubEnv('HUGGING_FACE_TOKEN', 'test-token')
+    vi.spyOn(console, 'info').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(loadSemantic(vectors.path)).toBe(true)
   })
 
-  it('sends both sentences to Hugging Face and maps each score to a message pair', async () => {
-    let received: { auth: string | null; body: unknown } | undefined
-    mswServer.use(
-      http.post(HUGGING_FACE_URL, async ({ request }) => {
-        received = { auth: request.headers.get('Authorization'), body: await request.json() }
-        return HttpResponse.json([0.8, 0.3])
-      }),
-    )
+  it('maps each target to a scored pair', () => {
+    const scores = getSemanticScore(message('alice', 'mer'), [
+      message('bob', 'plage'),
+      message('carol', 'chaise'),
+    ])
 
-    const scores = await getSemanticScore(source, targets)
-
-    expect(received).toEqual({
-      auth: 'Bearer test-token',
-      body: { inputs: { source_sentence: 'apple', sentences: ['pear', 'plum'] } },
-    })
     expect(scores).toEqual([
-      { sourceId: 'm-alice', targetId: 'm-bob', score: 0.8 },
-      { sourceId: 'm-alice', targetId: 'm-carol', score: 0.3 },
+      { sourceId: 'm-alice', targetId: 'm-bob', score: expect.closeTo(0.6, 2) },
+      { sourceId: 'm-alice', targetId: 'm-carol', score: expect.closeTo(0, 2) },
     ])
   })
 
-  it('does not call Hugging Face when the semantic check is disabled', async () => {
-    vi.stubEnv('ENABLE_SEMANTIC_CHECK', '0')
-    const onRequest = vi.fn()
-    mswServer.events.on('request:start', onRequest)
-
-    expect(await getSemanticScore(source, targets)).toEqual([])
-    expect(onRequest).not.toHaveBeenCalled()
-
-    mswServer.events.removeListener('request:start', onRequest)
+  it('scores identical words 1', () => {
+    expect(scoreOf('plage', 'plage')).toBeCloseTo(1, 2)
   })
 
-  it('returns no score when Hugging Face cannot be reached', async () => {
-    mswServer.use(http.post(HUGGING_FACE_URL, () => HttpResponse.error()))
+  it('ignores case, surrounding spaces, the œ ligature and typographic apostrophes', () => {
+    expect(scoreOf(' MER ', 'Plage')).toBeCloseTo(0.6, 2)
+    expect(scoreOf('Cœur', 'mer')).toBeCloseTo(1, 2)
+    expect(scoreOf('presqu’île', 'mer')).toBeCloseTo(1, 2)
+  })
 
-    expect(await getSemanticScore(source, targets)).toEqual([])
+  it('falls back to the most frequent accented form of a word typed without accents', () => {
+    // "peche" is both pêche (0.8 with plage) and péché (0 with plage): pêche is more frequent.
+    expect(scoreOf('peche', 'plage')).toBeCloseTo(0.8, 2)
+    expect(scoreOf('péché', 'plage')).toBeCloseTo(0, 2)
+  })
+
+  it('gives a null score to a pair with an unknown word, and still scores the others', () => {
+    const scores = getSemanticScore(message('alice', 'mer'), [
+      message('bob', 'xyzzy'),
+      message('carol', 'plage'),
+    ])
+
+    expect(scores.map((s) => s.score)).toEqual([null, expect.closeTo(0.6, 2)])
+    expect(scoreOf('xyzzy', 'mer')).toBeNull()
+  })
+
+  it('turns semantics off when the file is missing', () => {
+    expect(loadSemantic(join(vectors.dir, 'missing.bin'))).toBe(false)
+
+    expect(isSemanticOn()).toBe(false)
+    expect(getSemanticScore(message('alice', 'mer'), [message('bob', 'plage')])).toEqual([])
+    expect(console.error).toHaveBeenCalled()
+  })
+
+  it('turns semantics off when the file is not a vector file', () => {
+    const invalid = join(vectors.dir, 'invalid.bin')
+    writeFileSync(invalid, 'not a vector file')
+
+    expect(loadSemantic(invalid)).toBe(false)
+    expect(isSemanticOn()).toBe(false)
   })
 })

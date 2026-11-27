@@ -20,9 +20,6 @@ cp packages/frontend/.env.example packages/frontend/.env
 | Variable                    | File     | Purpose                                                                  |
 | --------------------------- | -------- | ------------------------------------------------------------------------ |
 | `PORT`, `HOST`              | backend  | Where the server listens (`3000`, `0.0.0.0`)                             |
-| `ENABLE_SEMANTIC_CHECK`     | backend  | `1` to score guesses by meaning with Hugging Face, `0` to turn it off    |
-| `HUGGING_FACE_TOKEN`        | backend  | API token, needed only when the semantic check is on                     |
-| `HUGGING_FACE_SEMANTIC_API` | backend  | URL of the Hugging Face model, needed only when the semantic check is on |
 | `VITE_WEB_SOCKET_URL`       | frontend | Backend WebSocket address, e.g. `ws://localhost:3000`                    |
 
 ## Run locally
