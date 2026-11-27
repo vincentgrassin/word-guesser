@@ -62,7 +62,12 @@ describe('parseMessage', () => {
 
 describe('buildInitialGame', () => {
   it('builds an opened game from the creation form properties', () => {
-    const properties = JSON.stringify({ type: 'solo', maxPlayers: 3, duration: 60_000, name: 'Fun' })
+    const properties = JSON.stringify({
+      type: 'basic',
+      maxPlayers: 3,
+      duration: 60_000,
+      name: 'Fun',
+    })
     const game = buildInitialGame('g1', 'alice', properties)
 
     expect(game).toMatchObject({
@@ -72,12 +77,31 @@ describe('buildInitialGame', () => {
       settings: {
         status: 'opened',
         createdBy: 'alice',
-        type: 'solo',
+        type: 'basic',
         maxPlayers: 3,
         duration: 60_000,
         name: 'Fun',
       },
     })
+    expect(game.settings.botLevel).toBeUndefined()
+  })
+
+  it('builds a Solo game for 2 players, with the chosen bot level', () => {
+    const properties = JSON.stringify({ type: 'solo', maxPlayers: 5, botLevel: 'hard', name: 'Me' })
+
+    expect(buildInitialGame('g1', 'alice', properties).settings).toMatchObject({
+      type: 'solo',
+      maxPlayers: 2,
+      botLevel: 'hard',
+    })
+  })
+
+  it('gives a Solo game the normal bot level when the level is missing or invalid', () => {
+    const missing = JSON.stringify({ type: 'solo' })
+    const invalid = JSON.stringify({ type: 'solo', botLevel: 'genius' })
+
+    expect(buildInitialGame('g1', 'alice', missing).settings.botLevel).toBe('normal')
+    expect(buildInitialGame('g1', 'alice', invalid).settings.botLevel).toBe('normal')
   })
 
   it('falls back to default properties and uses the id as name', () => {
@@ -96,7 +120,12 @@ describe('buildInitialGame', () => {
   })
 
   it('keeps only the properties the creator may choose', () => {
-    const properties = JSON.stringify({ name: 'Fun', status: 'win', createdBy: 'bob', startedAt: 1 })
+    const properties = JSON.stringify({
+      name: 'Fun',
+      status: 'win',
+      createdBy: 'bob',
+      startedAt: 1,
+    })
     const { settings } = buildInitialGame('g1', 'alice', properties)
 
     expect(settings.status).toBe('opened')

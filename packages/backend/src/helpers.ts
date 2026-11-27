@@ -12,6 +12,9 @@ import {
   WebSocket,
   Round,
   MessageSimilarity,
+  BotLevel,
+  botLevels,
+  generateUID,
 } from '@word-guesser/shared'
 import { getSemanticScore } from './semantic.js'
 
@@ -240,12 +243,20 @@ export const buildInitialGame = (
   const parsed = rawProperties ? parseJson(rawProperties) : undefined
   const input = isRecord(parsed) ? parsed : {}
 
+  const isSolo = input.type === 'solo'
+
   // Pick each property the creator may choose; status, createdBy... are the server's.
   const gameProperties: GameProperties = {
-    type: input.type === 'solo' ? 'solo' : DEFAULT_GAME_PROPERTIES.type,
-    maxPlayers: readInteger(input.maxPlayers, DEFAULT_GAME_PROPERTIES.maxPlayers, LIMITS.maxPlayers),
+    type: isSolo ? 'solo' : DEFAULT_GAME_PROPERTIES.type,
+    // Solo: the creator and the bot
+    maxPlayers: isSolo
+      ? 2
+      : readInteger(input.maxPlayers, DEFAULT_GAME_PROPERTIES.maxPlayers, LIMITS.maxPlayers),
     duration: readInteger(input.duration, DEFAULT_GAME_PROPERTIES.duration, LIMITS.duration),
     name: readText(input.name, LIMITS.gameNameLength) || gameId,
+    ...(isSolo && {
+      botLevel: botLevels.has(input.botLevel as BotLevel) ? (input.botLevel as BotLevel) : 'normal',
+    }),
   }
 
   return {
@@ -352,3 +363,10 @@ export function areAllMessagesEquals(messages: ResponseMessage[], playersNumber:
   const firstMessage = messages[0].content
   return messages.every((item) => item.content === firstMessage)
 }
+
+// The bot seat of a Solo game: the server plays for it (see bot moves in server.ts).
+export const buildBot = (level: BotLevel): User => ({
+  userId: `bot-${generateUID()}`,
+  userName: `Bot (${level})`,
+  isBot: true,
+})

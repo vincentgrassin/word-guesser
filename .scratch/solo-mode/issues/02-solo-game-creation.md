@@ -1,6 +1,6 @@
 # 02 - Create a Solo game with a bot seat
 
-Status: open
+Status: done
 Blocked by: none
 
 ## What

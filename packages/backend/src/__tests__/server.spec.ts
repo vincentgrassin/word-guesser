@@ -69,8 +69,18 @@ async function connect(
 }
 
 const MINUTE = 60_000
-const twoPlayerGame = JSON.stringify({ type: 'basic', maxPlayers: 2, duration: 2 * MINUTE, name: 'Duo' })
-const longGame = JSON.stringify({ type: 'basic', maxPlayers: 2, duration: 30 * MINUTE, name: 'Long' })
+const twoPlayerGame = JSON.stringify({
+  type: 'basic',
+  maxPlayers: 2,
+  duration: 2 * MINUTE,
+  name: 'Duo',
+})
+const longGame = JSON.stringify({
+  type: 'basic',
+  maxPlayers: 2,
+  duration: 30 * MINUTE,
+  name: 'Long',
+})
 
 describe('game server (WebSocket)', () => {
   let server: FastifyInstance
@@ -276,6 +286,59 @@ describe('game server (WebSocket)', () => {
     return carol.next<Game[]>('LIST_GAMES')
   }
 
+  describe('Solo mode', () => {
+    const soloGame = JSON.stringify({
+      type: 'solo',
+      botLevel: 'hard',
+      duration: 30 * MINUTE,
+      name: 'Me',
+    })
+
+    it('starts a Solo game at once, with its creator and a bot', async () => {
+      alice.send('CREATE_GAME', { content: soloGame })
+
+      const game = await alice.next<Game>('CREATE_GAME')
+      expect(game.settings.status).toBe('started')
+      expect(game.players).toEqual([
+        { userId: 'alice', userName: 'alice-name' },
+        { userId: expect.stringMatching(/^bot-/), userName: 'Bot (hard)', isBot: true },
+      ])
+    })
+
+    it('refuses a Solo game when semantics are off', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      loadSemantic(join(vectors.dir, 'missing.bin'))
+
+      alice.send('CREATE_GAME', { content: soloGame })
+
+      expect(await alice.next('ERROR')).toBe('Solo mode is unavailable')
+    })
+
+    it('counts a Solo game in progress in the per-address limit', async () => {
+      await restartServer({ maxOpenGamesPerAddress: 1 })
+      alice.send('CREATE_GAME', { content: soloGame })
+      await alice.next('CREATE_GAME')
+
+      alice.send('CREATE_GAME', { content: soloGame })
+
+      expect(await alice.next('ERROR')).toMatch(/too many open games/i)
+    })
+
+    it('keeps the bot after a restart', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'word-guesser-'))
+      const stateFile = join(dir, 'state.json')
+      await restartServer({ stateFile })
+      alice.send('CREATE_GAME', { content: soloGame })
+      await alice.next('CREATE_GAME')
+
+      await restartServer({ stateFile })
+
+      const [solo] = (await gamesSeenByNewcomer()).filter((g) => g.settings.type === 'solo')
+      expect(solo.players[1]).toMatchObject({ userName: 'Bot (hard)', isBot: true })
+      rmSync(dir, { recursive: true, force: true })
+    })
+  })
+
   describe('one word per answer', () => {
     beforeEach(() => {
       vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -418,7 +481,9 @@ describe('game server (WebSocket)', () => {
     it('does not let a player take the id of someone else', async () => {
       await startGame()
 
-      alice.send('UPDATE_PLAYER', { content: JSON.stringify({ userId: 'bob', userName: 'Alicia' }) })
+      alice.send('UPDATE_PLAYER', {
+        content: JSON.stringify({ userId: 'bob', userName: 'Alicia' }),
+      })
       const game = await bob.next<Game>('UPDATE_PLAYER')
 
       expect(game.players).toEqual([

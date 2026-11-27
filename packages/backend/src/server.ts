@@ -20,6 +20,7 @@ import {
   broadcastGame,
   broadcastToOne,
   buildInitialGame,
+  buildBot,
   canDeleteGame,
   canPlayRound,
   clientAddress,
@@ -121,7 +122,11 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
   // Returns the reason to refuse this identity, if any. The first connection
   // of a user id reserves it for its token.
   const refuseIdentityReason = (userId: string, token: unknown): string | undefined => {
-    if (typeof token !== 'string' || token.length < TOKEN_LENGTH.min || token.length > TOKEN_LENGTH.max) {
+    if (
+      typeof token !== 'string' ||
+      token.length < TOKEN_LENGTH.min ||
+      token.length > TOKEN_LENGTH.max
+    ) {
       return 'Missing or invalid token'
     }
     const hash = hashToken(token)
@@ -229,10 +234,7 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
       '/connect/:userId',
       { websocket: true },
       (socket /* WebSocket */, req /* FastifyRequest */) => {
-        const address = clientAddress(
-          req.headers['x-forwarded-for'],
-          req.raw.socket?.remoteAddress,
-        )
+        const address = clientAddress(req.headers['x-forwarded-for'], req.raw.socket?.remoteAddress)
         const connectionRefused = refuseConnectionReason(address)
         if (connectionRefused) {
           console.error(`[ERROR]: Connection from ${address} refused: ${connectionRefused}`)
@@ -280,6 +282,14 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
                 return refuse('Too many open games created from your address')
               }
               const newGame = buildInitialGame(generateUID(), userId, content)
+              if (newGame.settings.type === 'solo') {
+                // The bot needs the word vectors to think
+                if (!isSemanticOn()) return refuse('Solo mode is unavailable')
+                // Seated at once, the creator then the bot: the game starts
+                addPlayerToGame(newGame, findPlayerById(userId, players))
+                newGame.players.push(buildBot(newGame.settings.botLevel ?? 'normal'))
+                updateGameStatus(newGame)
+              }
               games.push(newGame)
               creatorAddress.set(newGame.gameId, address)
               touch(newGame)
@@ -330,7 +340,8 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
             }
             case 'UPDATE_PLAYER': {
               const player = findPlayerById(userId, players)
-              if (!player || !updatePlayer(content, player)) return refuse('Invalid player settings')
+              if (!player || !updatePlayer(content, player))
+                return refuse('Invalid player settings')
               games.forEach((game) => {
                 const playerIndex = game.players.findIndex((p) => p.userId === player.userId)
                 if (playerIndex !== -1) {

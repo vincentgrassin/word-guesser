@@ -16,6 +16,8 @@ export type SocketRequestParams = {
 export type User = {
   userId: string
   userName: string
+  // A seat played by the server (Solo mode), with no connection of its own
+  isBot?: boolean
 }
 
 export type PlayerSettings = Omit<User, 'userId'>
