@@ -1,6 +1,6 @@
 # 06 - Credit fastText and Lexique
 
-Status: open
+Status: done
 Blocked by: none
 
 ## What

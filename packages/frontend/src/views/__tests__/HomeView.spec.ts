@@ -34,6 +34,20 @@ describe('Home page', () => {
     expect(text).toContain('02:00')
   })
 
+  it('credits the sources of the word proximity scores', async () => {
+    logInAs('alice', 'Alice')
+
+    app = await renderApp('/')
+
+    const footer = app.wrapper.find('footer')
+    expect(footer.text()).toContain('fastText')
+    expect(footer.text()).toContain('Lexique 3.83')
+    expect(footer.findAll('a').map((a) => a.attributes('href'))).toEqual([
+      'https://fasttext.cc/docs/en/crawl-vectors.html',
+      'http://www.lexique.org',
+    ])
+  })
+
   it('gives a new visitor an id and a secret token, and remembers them', async () => {
     app = await renderApp('/')
 

@@ -93,3 +93,12 @@ pnpm --filter backend build-vectors <download-dir>
 ```
 
 `<download-dir>` is any folder outside the repository (about 500 MB is downloaded into it, and kept for the next runs). The script checks each source against a fixed checksum and stops if one has changed. The same sources always give the same file.
+
+## Credits
+
+The word proximity scores come from two sources, both under Creative Commons licences:
+
+- **fastText French word vectors** (`cc.fr.300`), by Facebook AI Research, [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). [fasttext.cc](https://fasttext.cc/docs/en/crawl-vectors.html). E. Grave, P. Bojanowski, P. Gupta, A. Joulin, T. Mikolov, _Learning Word Vectors for 157 Languages_, LREC 2018.
+- **Lexique 3.83**, by Boris New and Christophe Pallier, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). [lexique.org](http://www.lexique.org).
+
+`packages/backend/data/vectors.bin` is derived from both, and is therefore shared under CC BY-SA 4.0.

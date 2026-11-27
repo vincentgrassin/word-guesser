@@ -47,22 +47,6 @@
   --section-gap: 160px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: var(--vt-c-dark-blue);
-    --color-primary: var(--vt-c-blue);
-    --color-secondary: var(--vt-c-light-blue);
-    --color-yellow: var(--vt-c-yellow);    
-    --color-orange: var(--vt-c-orange);
-    --color-red: var(--vt-c-red);
-    --color-light: var(--vt-c-light-blue);
-    --color-border: var(--vt-c-white);
-    --color-border-hover: var(--vt-c-divider-dark-1);
-    --color-heading: var(--vt-c-text-dark-1);
-    --color-text: var(--vt-c-text-dark-2);
-  }
-}
-
 *,
 *::before,
 *::after {

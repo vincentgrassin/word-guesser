@@ -19,5 +19,21 @@ useUserConnect()
         <GameItem :game="game" />
       </li>
     </ul>
+    <!-- Required by the Creative Commons licences of the word vectors (see the README) -->
+    <footer class="mt-8 text-sm">
+      Word proximity:
+      <a
+        class="underline"
+        href="https://fasttext.cc/docs/en/crawl-vectors.html"
+        target="_blank"
+        rel="noopener"
+        >fastText</a
+      >
+      (Facebook AI Research, CC BY-SA 3.0) and
+      <a class="underline" href="http://www.lexique.org" target="_blank" rel="noopener"
+        >Lexique 3.83</a
+      >
+      (Boris New, Christophe Pallier, CC BY-SA 4.0).
+    </footer>
   </main>
 </template>
