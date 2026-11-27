@@ -12,6 +12,7 @@ import {
   isPlayerInGame,
 } from '@word-guesser/shared'
 import fastify from 'fastify'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import {
   LIMITS,
   broadcast,
@@ -38,6 +39,7 @@ import {
   updatePlayer,
   cleanPlayer,
 } from './helpers.js'
+import { loadState, saveState } from './persistence.js'
 import { createTokenBucket, RateLimit, TokenBucket } from './rateLimit.js'
 
 // Largest WebSocket message accepted, in bytes: game messages are a few hundred.
@@ -49,8 +51,13 @@ const CLOCK_INTERVAL = 1000
 const MAX_REFUSED_MESSAGES = 20
 // WebSocket close code for "policy violation"
 const POLICY_VIOLATION = 1008
+// The browser generates 32 hex characters; anything much shorter is guessable
+const TOKEN_LENGTH = { min: 16, max: 128 }
 
-type ServerOptions = {
+// Only a hash of each token is kept, so a leak of the server state reveals no token.
+const hashToken = (token: string) => createHash('sha256').update(token).digest()
+
+type LimitOptions = {
   maxGames?: number
   // Games still being played (opened or started) created from one IP address
   maxOpenGamesPerAddress?: number
@@ -62,7 +69,7 @@ type ServerOptions = {
   connectionRate?: RateLimit
 }
 
-const DEFAULT_OPTIONS: Required<ServerOptions> = {
+const DEFAULT_LIMITS: Required<LimitOptions> = {
   maxGames: LIMITS.maxGames,
   maxOpenGamesPerAddress: 3,
   maxConnectionsPerAddress: 10,
@@ -70,19 +77,65 @@ const DEFAULT_OPTIONS: Required<ServerOptions> = {
   connectionRate: { perSecond: 20 / 60, burst: 20 },
 }
 
+type ServerOptions = LimitOptions & {
+  // Where the state is saved, so games survive a restart. Nothing is saved without it.
+  stateFile?: string
+}
+
 // Each call returns an independent server with its own in-memory state,
 // so tests can start from a clean slate.
-export function buildServer(overrides: ServerOptions = {}) {
-  const options = { ...DEFAULT_OPTIONS, ...overrides }
+export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
+  const options = { ...DEFAULT_LIMITS, ...limits }
   const server = fastify()
-  const games: Game[] = []
+  const saved = stateFile ? loadState(stateFile) : undefined
+  const games: Game[] = saved?.games ?? []
   const players: Player[] = []
 
   // Server-side only, never sent to clients (keyed by game id or IP address):
-  const lastActivity = new Map<string, number>() // when each game last changed
-  const creatorAddress = new Map<string, string>() // which address created each game
+  const lastActivity = new Map<string, number>(saved?.lastActivity) // when each game last changed
+  const creatorAddress = new Map<string, string>(saved?.creatorAddress) // which address created each game
   const connectionsPerAddress = new Map<string, number>()
   const connectionBuckets = new Map<string, TokenBucket>()
+  const tokenHashes = new Map<string, Buffer>( // which token owns each user id
+    saved?.tokenHashes.map(([userId, hash]) => [userId, Buffer.from(hash, 'hex')]),
+  )
+  // While the server stops, closing connections must not change the games being saved
+  let isShuttingDown = false
+
+  const save = () => {
+    if (!stateFile) return
+    try {
+      saveState(stateFile, {
+        games,
+        lastActivity: [...lastActivity],
+        creatorAddress: [...creatorAddress],
+        tokenHashes: [...tokenHashes].map(([userId, hash]) => [userId, hash.toString('hex')]),
+      })
+    } catch (error) {
+      console.error(`[ERROR]: Failed to save the state to ${stateFile}`, error)
+    }
+  }
+
+  // Returns the reason to refuse this identity, if any. The first connection
+  // of a user id reserves it for its token.
+  const refuseIdentityReason = (userId: string, token: unknown): string | undefined => {
+    if (typeof token !== 'string' || token.length < TOKEN_LENGTH.min || token.length > TOKEN_LENGTH.max) {
+      return 'Missing or invalid token'
+    }
+    const hash = hashToken(token)
+    const owner = tokenHashes.get(userId)
+    if (owner && !timingSafeEqual(owner, hash)) return 'This user id belongs to someone else'
+    tokenHashes.set(userId, hash)
+  }
+
+  // An id with no open connection and no seat in a game can be taken again.
+  const forgetUnusedIdentities = () => {
+    tokenHashes.forEach((_, userId) => {
+      const isConnected = players.some((p) => p.userId === userId)
+      const hasSeat = games.some((game) => isPlayerInGame(userId, game))
+      if (!isConnected && !hasSeat) tokenHashes.delete(userId)
+    })
+  }
 
   const touch = (game: Game) => lastActivity.set(game.gameId, Date.now())
 
@@ -132,10 +185,18 @@ export function buildServer(overrides: ServerOptions = {}) {
   const cleanupTimer = setInterval(() => {
     deleteExpiredGames()
     forgetIdleAddresses()
+    forgetUnusedIdentities()
+    save()
   }, CLEANUP_INTERVAL)
+
+  // Added before the WebSocket plugin, so it runs before the plugin closes the connections
+  server.addHook('preClose', async () => {
+    isShuttingDown = true
+  })
   server.addHook('onClose', async () => {
     clearInterval(clockTimer)
     clearInterval(cleanupTimer)
+    save()
   })
 
   // Returns the reason to refuse a new connection from this address, if any.
@@ -154,6 +215,10 @@ export function buildServer(overrides: ServerOptions = {}) {
     else connectionsPerAddress.delete(address)
   }
 
+  // Polled by Docker (docker-compose.prod.yml). Not reachable from outside:
+  // Caddy only forwards /connect/* to the backend.
+  server.get('/health', async () => ({ status: 'ok' }))
+
   server.register(websocketPlugin, { options: { maxPayload: MAX_MESSAGE_SIZE } })
 
   server.register(async function (fastify) {
@@ -171,10 +236,16 @@ export function buildServer(overrides: ServerOptions = {}) {
           socket.close(POLICY_VIOLATION, connectionRefused)
           return
         }
-        connectionsPerAddress.set(address, (connectionsPerAddress.get(address) ?? 0) + 1)
-
         const userId = (req.params as SocketRequestParams).userId
         const query = req.query as SocketRequestQuery
+        const identityRefused = refuseIdentityReason(userId, query.token)
+        if (identityRefused) {
+          console.error(`[ERROR]: Connection as ${userId} refused: ${identityRefused}`)
+          socket.close(POLICY_VIOLATION, identityRefused)
+          return
+        }
+        connectionsPerAddress.set(address, (connectionsPerAddress.get(address) ?? 0) + 1)
+
         const newPlayer: Player = {
           userId,
           socket,
@@ -291,6 +362,7 @@ export function buildServer(overrides: ServerOptions = {}) {
         // Clean up on disconnect
         socket.on('close', () => {
           releaseConnection(address)
+          if (isShuttingDown) return
           const disconnectedPlayer = findPlayer(socket, players)
 
           if (!disconnectedPlayer) return

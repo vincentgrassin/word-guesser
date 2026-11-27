@@ -55,7 +55,7 @@ jobs:
         run: pnpm install --frozen-lockfile # fails if pnpm-lock.yaml is out of date
 
       - name: Lint
-        # Lints backend and frontend. Checks only, never fixes:
+        # Lints every package. Checks only, never fixes:
         # run "pnpm --filter <package> lint:fix" locally to fix.
         run: pnpm lint
 

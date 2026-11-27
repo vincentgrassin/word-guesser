@@ -7,7 +7,10 @@ import { setupServer } from 'msw/node'
 // the app sent (`received`) and push server events to it (`send`).
 const gameSocket = ws.link(/\/connect\//)
 
-type Connection = { userId: string; userName: string | null }
+type Connection = { userId: string; userName: string | null; token: string | null }
+type OpenClient = { close: () => void }
+
+const openClients: OpenClient[] = []
 
 export const fakeGameServer = {
   // Games sent in LIST_GAMES to each new connection.
@@ -23,18 +26,26 @@ export const fakeGameServer = {
     return this.received.filter((m) => m.event === event)
   },
 
+  // Like a server restart: every open connection is closed by the server.
+  dropConnections() {
+    openClients.splice(0).forEach((client) => client.close())
+  },
+
   reset() {
     this.games = []
     this.connections = []
     this.received = []
+    openClients.length = 0
   },
 }
 
 export const mswServer = setupServer(
   gameSocket.addEventListener('connection', ({ client }) => {
+    openClients.push(client)
     fakeGameServer.connections.push({
       userId: client.url.pathname.split('/').pop() ?? '',
       userName: client.url.searchParams.get('userName'),
+      token: client.url.searchParams.get('token'),
     })
     client.send(JSON.stringify({ event: 'LIST_GAMES', payload: fakeGameServer.games }))
     client.addEventListener('message', (event) => {

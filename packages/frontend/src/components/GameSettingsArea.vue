@@ -11,7 +11,7 @@ import { formatDuration, computeGameStatusIcon } from '@/utils/helpers'
 import GameSettingItem from '@/components/GameSettingItem.vue'
 
 const { gameId, class: classProp } = defineProps<{ gameId: string; class?: string }>()
-const { state, deleteGame } = useGamesStore()
+const { state } = useGamesStore()
 const game = computed(() => state.games.find((g) => g.gameId === gameId))
 // Display only: the server ends the game when time runs out (END_GAME)
 const { gameTimer } = useGameTimer(game)
@@ -34,7 +34,8 @@ const { gameTimer } = useGameTimer(game)
         <p class="text-2xl font-bold text-text">
           You {{ game.settings.status === 'win' ? 'win' : 'lose' }}
         </p>
-        <div class="my-4" @:click="() => deleteGame(gameId)">
+        <!-- Leaving does not delete the game: the server removes finished games after a while -->
+        <div class="my-4">
           <BaseLink to="/">Go home</BaseLink>
         </div>
       </div>

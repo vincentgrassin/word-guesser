@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildGame, fakeGameServer } from '@/__tests__/fakeGameServer'
-import { logInAs, renderApp, unmountApp } from '@/__tests__/renderApp'
+import { logInAs, renderApp, tokenOf, unmountApp } from '@/__tests__/renderApp'
 
 describe('Home page', () => {
   let app: Awaited<ReturnType<typeof renderApp>>
@@ -23,7 +23,9 @@ describe('Home page', () => {
 
     app = await renderApp('/')
 
-    expect(fakeGameServer.connections).toEqual([{ userId: 'alice', userName: 'Alice' }])
+    expect(fakeGameServer.connections).toEqual([
+      { userId: 'alice', userName: 'Alice', token: tokenOf('alice') },
+    ])
     await vi.waitFor(() => expect(app.wrapper.text()).toContain('Duo'))
     const text = app.wrapper.text()
     expect(text).toContain('Alice')
@@ -32,12 +34,27 @@ describe('Home page', () => {
     expect(text).toContain('02:00')
   })
 
-  it('gives a new visitor an id and remembers it', async () => {
+  it('gives a new visitor an id and a secret token, and remembers them', async () => {
     app = await renderApp('/')
 
     const [connection] = fakeGameServer.connections
     expect(connection.userId).not.toBe('')
     expect(localStorage.getItem('userId')).toBe(connection.userId)
+    expect(connection.token).toMatch(/^[0-9a-f]{32}$/)
+    expect(localStorage.getItem('userToken')).toBe(connection.token)
+  })
+
+  it('tells the player while the connection is lost, until it is back', async () => {
+    logInAs('alice', 'Alice')
+    app = await renderApp('/')
+    await vi.waitFor(() => expect(fakeGameServer.connections).toHaveLength(1))
+
+    fakeGameServer.dropConnections()
+
+    await vi.waitFor(() => expect(app.wrapper.text()).toContain('Connection lost'))
+    await vi.waitFor(() => expect(app.wrapper.text()).not.toContain('Connection lost'), {
+      timeout: 3000,
+    })
   })
 
   it('creates a game from the creation form', async () => {

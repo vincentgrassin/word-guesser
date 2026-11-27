@@ -20,7 +20,10 @@ export function unmountApp({ wrapper, pinia }: { wrapper: VueWrapper; pinia: Pin
   wrapper.unmount()
 }
 
+export const tokenOf = (userId: string) => `${userId}-secret-token-0123456789`
+
 export function logInAs(userId: string, userName: string) {
   localStorage.setItem('userId', userId)
   localStorage.setItem('userName', userName)
+  localStorage.setItem('userToken', tokenOf(userId))
 }

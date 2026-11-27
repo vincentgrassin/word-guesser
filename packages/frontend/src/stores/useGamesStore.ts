@@ -15,7 +15,14 @@ type GamesState = {
   games: Game[]
   socket: WebSocket | null
   user: User
+  // True from an unexpected disconnection until the connection is back
+  connectionLost: boolean
 }
+
+type ConnectionTarget = { userId: string; userName: string; token: string }
+
+// Waits between reconnection attempts: doubles after each failure, up to the max
+const RECONNECT_DELAY = { initial: 1000, max: 30_000 }
 
 // In production the backend is served behind the same address as the page (see Caddyfile)
 const webSocketBaseUrl = (): string => {
@@ -32,65 +39,87 @@ export const useGamesStore = defineStore('games', () => {
       userId: '',
       userName: '',
     },
+    connectionLost: false,
   })
 
-  const connect = (userId: string, userName: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const wsUrl = `${webSocketBaseUrl()}/connect/${encodeURIComponent(userId)}?userName=${encodeURIComponent(userName)}`
-      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
-        state.socket = new WebSocket(wsUrl)
+  let target: ConnectionTarget | null = null
+  let reconnectDelay = RECONNECT_DELAY.initial
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined
 
-        state.socket.onopen = () => {
-          console.info(`[INFO]: Connected to socket with`, userId)
-          resolve()
-        }
-
-        state.socket.onmessage = (e) => {
-          const { event, payload }: SocketPayload = JSON.parse(e.data)
-          switch (event) {
-            case 'LIST_GAMES': {
-              state.games = payload as Game[]
-              break
-            }
-            case 'CREATE_GAME':
-            case 'JOIN_GAME':
-            case 'PLAY_ROUND':
-            case 'CLOSE_CONNECTION':
-            case 'QUIT_GAME':
-            case 'UPDATE_PLAYER':
-            case 'END_GAME': {
-              const game = payload as Game
-              if (game) {
-                syncGame(game, state.games)
-              }
-              break
-            }
-            case 'DELETE_GAME': {
-              const gameId = payload as string | false
-              if (gameId) {
-                removeGame(gameId, state.games)
-              }
-              break
-            }
-            case 'ERROR': {
-              console.warn(`[WARN]: The server refused a message: ${payload}`)
-              break
-            }
-          }
-        }
-
-        state.socket.onclose = () => {
-          console.info(`[INFO]: WebSocket connection closed for`, userId)
-        }
-
-        state.socket.onerror = (error) => {
-          console.error(`[ERROR]: WebSocket error for ${userId}`, error)
-          reject(error)
-        }
-      } else {
-        resolve()
+  const handleServerMessage = (e: MessageEvent) => {
+    const { event, payload }: SocketPayload = JSON.parse(e.data)
+    switch (event) {
+      case 'LIST_GAMES': {
+        state.games = payload as Game[]
+        break
       }
-    })
+      case 'CREATE_GAME':
+      case 'JOIN_GAME':
+      case 'PLAY_ROUND':
+      case 'CLOSE_CONNECTION':
+      case 'QUIT_GAME':
+      case 'UPDATE_PLAYER':
+      case 'END_GAME': {
+        const game = payload as Game
+        if (game) {
+          syncGame(game, state.games)
+        }
+        break
+      }
+      case 'DELETE_GAME': {
+        const gameId = payload as string | false
+        if (gameId) {
+          removeGame(gameId, state.games)
+        }
+        break
+      }
+      case 'ERROR': {
+        console.warn(`[WARN]: The server refused a message: ${payload}`)
+        break
+      }
+    }
+  }
+
+  // Opens the socket, and opens a new one each time it closes unexpectedly.
+  // onFirstOpen is called once the connection is up.
+  const openSocket = (onFirstOpen: () => void) => {
+    if (!target) return
+    const { userId, userName, token } = target
+    const query = `userName=${encodeURIComponent(userName)}&token=${encodeURIComponent(token)}`
+    const socket = new WebSocket(`${webSocketBaseUrl()}/connect/${encodeURIComponent(userId)}?${query}`)
+    state.socket = socket
+
+    socket.onopen = () => {
+      console.info(`[INFO]: Connected to socket with`, userId)
+      state.connectionLost = false
+      reconnectDelay = RECONNECT_DELAY.initial
+      onFirstOpen()
+    }
+
+    // The server sends LIST_GAMES on every connection: a reconnection resyncs the games
+    socket.onmessage = handleServerMessage
+
+    socket.onclose = () => {
+      // Ignore a socket that was replaced, or closed on purpose by disconnect()
+      if (state.socket !== socket || !target) return
+      console.info(`[INFO]: Connection lost, retrying in ${reconnectDelay} ms`)
+      state.connectionLost = true
+      reconnectTimer = setTimeout(() => openSocket(onFirstOpen), reconnectDelay)
+      reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_DELAY.max)
+    }
+
+    // A failed connection also fires close, which schedules the next attempt
+    socket.onerror = (error) => {
+      console.error(`[ERROR]: WebSocket error for ${userId}`, error)
+    }
+  }
+
+  // Resolves once connected. Never rejects: while the server is unreachable,
+  // it keeps retrying (see RECONNECT_DELAY).
+  const connect = (userId: string, userName: string, token: string): Promise<void> => {
+    if (state.socket && state.socket.readyState === WebSocket.OPEN) return Promise.resolve()
+    target = { userId, userName, token }
+    return new Promise((resolve) => openSocket(resolve))
   }
 
   const setUserId = (id: string) => {
@@ -101,6 +130,12 @@ export const useGamesStore = defineStore('games', () => {
   const setUserName = (name: string) => {
     state.user.userName = name
     localStorage.setItem('userName', name)
+    // Reconnections then announce the new name
+    if (target) target.userName = name
+  }
+
+  const setUserToken = (token: string) => {
+    localStorage.setItem('userToken', token)
   }
 
   const message = (message: Omit<RequestMessage, 'date'>) => {
@@ -140,6 +175,9 @@ export const useGamesStore = defineStore('games', () => {
   }
 
   const disconnect = () => {
+    target = null
+    clearTimeout(reconnectTimer)
+    state.connectionLost = false
     if (state.socket) {
       state.socket.close()
     }
@@ -158,5 +196,6 @@ export const useGamesStore = defineStore('games', () => {
     updatePlayerSettings,
     setUserId,
     setUserName,
+    setUserToken,
   }
 })

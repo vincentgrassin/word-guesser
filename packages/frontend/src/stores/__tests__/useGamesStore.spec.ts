@@ -1,7 +1,10 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildGame, fakeGameServer } from '@/__tests__/fakeGameServer'
+import { tokenOf } from '@/__tests__/renderApp'
 import { useGamesStore } from '../useGamesStore'
+
+const aliceToken = tokenOf('alice')
 
 describe('useGamesStore', () => {
   let store: ReturnType<typeof useGamesStore>
@@ -19,20 +22,49 @@ describe('useGamesStore', () => {
   it('connects as the user and loads the list of games', async () => {
     fakeGameServer.games = [buildGame({ gameId: 'g1' }), buildGame({ gameId: 'g2' })]
 
-    await store.connect('alice', 'Alice')
+    await store.connect('alice', 'Alice', aliceToken)
 
-    expect(fakeGameServer.connections).toEqual([{ userId: 'alice', userName: 'Alice' }])
+    expect(fakeGameServer.connections).toEqual([
+      { userId: 'alice', userName: 'Alice', token: aliceToken },
+    ])
     await vi.waitFor(() => expect(store.state.games.map((g) => g.gameId)).toEqual(['g1', 'g2']))
   })
 
   it('keeps a user name with URL special characters intact', async () => {
-    await store.connect('alice', 'Tom & Jerry #1?')
+    await store.connect('alice', 'Tom & Jerry #1?', aliceToken)
 
-    expect(fakeGameServer.connections).toEqual([{ userId: 'alice', userName: 'Tom & Jerry #1?' }])
+    expect(fakeGameServer.connections).toEqual([
+      { userId: 'alice', userName: 'Tom & Jerry #1?', token: aliceToken },
+    ])
+  })
+
+  describe('when the connection drops (e.g. the server restarts)', () => {
+    it('reconnects on its own and reloads the games', async () => {
+      await store.connect('alice', 'Alice', aliceToken)
+      fakeGameServer.games = [buildGame({ gameId: 'g1' })]
+
+      fakeGameServer.dropConnections()
+
+      await vi.waitFor(() => expect(store.state.connectionLost).toBe(true))
+      await vi.waitFor(() => expect(fakeGameServer.connections).toHaveLength(2), { timeout: 3000 })
+      expect(fakeGameServer.connections[1]).toEqual(fakeGameServer.connections[0])
+      await vi.waitFor(() => expect(store.state.games.map((g) => g.gameId)).toEqual(['g1']))
+      expect(store.state.connectionLost).toBe(false)
+    })
+
+    it('does not reconnect after a deliberate disconnect', async () => {
+      await store.connect('alice', 'Alice', aliceToken)
+
+      store.disconnect()
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      expect(fakeGameServer.connections).toHaveLength(1)
+      expect(store.state.connectionLost).toBe(false)
+    })
   })
 
   it('adds a game created by anyone, and updates it on later events', async () => {
-    await store.connect('alice', 'Alice')
+    await store.connect('alice', 'Alice', aliceToken)
 
     fakeGameServer.send('CREATE_GAME', buildGame({ gameId: 'g1' }))
     await vi.waitFor(() => expect(store.state.games).toHaveLength(1))
@@ -44,7 +76,7 @@ describe('useGamesStore', () => {
 
   it('removes a deleted game', async () => {
     fakeGameServer.games = [buildGame({ gameId: 'g1' }), buildGame({ gameId: 'g2' })]
-    await store.connect('alice', 'Alice')
+    await store.connect('alice', 'Alice', aliceToken)
     await vi.waitFor(() => expect(store.state.games).toHaveLength(2))
 
     fakeGameServer.send('DELETE_GAME', 'g1')
@@ -53,7 +85,7 @@ describe('useGamesStore', () => {
   })
 
   it('sends player actions to the server', async () => {
-    await store.connect('alice', 'Alice')
+    await store.connect('alice', 'Alice', aliceToken)
 
     store.createGame({ type: 'basic', maxPlayers: 3, duration: 60_000, name: 'Trio' })
     store.joinGame('g1')

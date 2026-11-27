@@ -1,6 +1,13 @@
 import type { IconName } from '@/components/ui/BaseIcon.vue'
 import type { GameStatus, ResponseMessage, Round } from '@word-guesser/shared'
 
+// 32 random hex characters. getRandomValues also works on plain HTTP pages,
+// unlike crypto.randomUUID, and the server may be reached without HTTPS.
+export function generateToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 export function formatTime(timestamp: number) {
   const date = new Date(timestamp)
   const hours = date.getHours().toString().padStart(2, '0')

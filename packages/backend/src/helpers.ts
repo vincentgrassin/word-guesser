@@ -210,17 +210,17 @@ const calculateMessageSimilarities = async (round: Round): Promise<MessageSimila
   return similarities
 }
 
+// A game is played only while the table is full: it waits ('opened') otherwise.
+// A finished game stays finished.
 export const updateGameStatus = (game: Game) => {
-  const playersNumber = game.settings.maxPlayers
+  const { status, maxPlayers } = game.settings
+  if (status === 'win' || status === 'loss') return
 
-  if (game.players.length === playersNumber) {
-    game.settings.status = 'started'
-  }
+  game.settings.status = game.players.length === maxPlayers ? 'started' : 'opened'
 
-  if (game.rounds.length) {
-    const lastRound = game.rounds[game.rounds.length - 1]
-    const hasWin = areAllMessagesEquals(lastRound.messages, playersNumber)
-    game.settings.status = hasWin ? 'win' : game.settings.status
+  const lastRound = game.rounds[game.rounds.length - 1]
+  if (lastRound && areAllMessagesEquals(lastRound.messages, maxPlayers)) {
+    game.settings.status = 'win'
   }
 }
 
@@ -323,6 +323,8 @@ export function cleanPlayer(player: Player): User {
   return rest
 }
 
+// The round being played then waits for the player who takes the free seat:
+// the leaving player's answer is dropped, and the game pauses until the table is full.
 export function removePlayerFromGame(userId: string, game: Game): boolean {
   const players = game.players
   if (!userId) return false
@@ -330,6 +332,12 @@ export function removePlayerFromGame(userId: string, game: Game): boolean {
   if (index !== -1) {
     players.splice(index, 1)
   }
+
+  const lastRound = game.rounds[game.rounds.length - 1]
+  if (lastRound && !lastRound.isComplete) {
+    lastRound.messages = lastRound.messages.filter((m) => m.userId !== userId)
+  }
+  updateGameStatus(game)
   return true
 }
 

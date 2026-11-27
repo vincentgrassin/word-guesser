@@ -14,9 +14,11 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data # HTTPS certificates
       - caddy_config:/config
-    depends_on:
-      - backend
-      - frontend
+    depends_on: # Caddy starts once both answer their health check
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     restart: unless-stopped
 
   backend:
@@ -28,6 +30,16 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 3000
+      # Games are saved there on shutdown and every minute, so deployments keep them
+      STATE_FILE: /app/data/state.json
+    volumes:
+      - backend_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   frontend:
@@ -35,8 +47,15 @@ services:
       context: .
       dockerfile: packages/frontend/Dockerfile
       target: prod
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped
 
 volumes:
   caddy_data:
   caddy_config:
+  backend_data: # saved games (see STATE_FILE)

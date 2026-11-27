@@ -29,6 +29,22 @@ Internet ──▶ caddy (:80, :443) ──┬─ /connect/* ──▶ backend  
 
 All three restart automatically after a crash or a server reboot (`restart: unless-stopped`).
 
+Docker checks every 30 s that `backend` (`GET /health`) and `frontend` answer. `docker compose ps` shows the result as `healthy` or `unhealthy`. Caddy only starts once both are healthy.
+
+### Saved games
+
+The backend keeps the games in memory and saves them to `/app/data/state.json` (`STATE_FILE`) when it stops and every minute. The file lives in the `backend_data` Docker volume, so it survives deployments: games in progress continue after a restart, and the browsers reconnect on their own.
+
+The file also holds a hash of each player's secret token, so nobody can take the id of a seated player after a restart. If the file is unreadable, the backend logs an error and starts with no games.
+
+To start from scratch, delete the volume (this deletes every saved game):
+
+```sh
+docker compose -f docker-compose.prod.yml down
+docker volume rm word-guesser_backend_data
+docker compose -f docker-compose.prod.yml up -d
+```
+
 > Docker bypasses `ufw` for published ports. Never add `ports:` to `backend`, `frontend` or a database: route traffic through Caddy instead.
 
 ## Update the game
@@ -70,7 +86,7 @@ In `~/.ssh/authorized_keys`, the deploy key line holds the same commands on one 
 command="cd ~/word-guesser && git fetch origin && git reset --hard origin/master && docker compose -f docker-compose.prod.yml up --build -d && docker image prune -f",restrict ssh-ed25519 AAAA... github-deploy
 ```
 
-**Games in progress are lost on every backend restart**, because they live in memory only.
+Games in progress survive the update (see [Saved games](#saved-games)). Players see a "Connection lost" banner for the few seconds the backend restarts.
 
 ### Roll back
 
@@ -105,4 +121,4 @@ After changing `packages/backend/.env`, restart the backend for the change to ap
 ## Not set up yet
 
 - **Domain and HTTPS**: point the domain at the server, add `SITE_ADDRESS=<domain>` to a `.env` file in `~/word-guesser`, then run the update command. Caddy gets the certificate automatically.
-- **Backups**: nothing to back up yet, as there is no database.
+- **Backups**: the only data is the saved games in the `backend_data` volume. They are short-lived (finished games are deleted after 10 minutes), so they are not backed up.

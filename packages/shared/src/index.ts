@@ -6,6 +6,8 @@ export type GameType = 'basic' | 'solo'
 
 export type SocketRequestQuery = {
   userName: string
+  // Secret kept by the browser: proves the connection belongs to the owner of userId
+  token?: string
 }
 export type SocketRequestParams = {
   userId: string

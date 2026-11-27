@@ -265,6 +265,17 @@ describe('updateGameStatus', () => {
     expect(game.settings.status).toBe('opened')
   })
 
+  it('never restarts a finished game', () => {
+    const won = buildGame({ players: [alice, bob], settings: { status: 'win' } })
+    const lost = buildGame({ players: [alice, bob], settings: { status: 'loss' } })
+
+    updateGameStatus(won)
+    updateGameStatus(lost)
+
+    expect(won.settings.status).toBe('win')
+    expect(lost.settings.status).toBe('loss')
+  })
+
   it('marks the game as won when every player said the same word', () => {
     const game = buildGame({
       players: [alice, bob],
@@ -459,6 +470,51 @@ describe('player list helpers', () => {
     const game = buildGame({ players: [alice, bob] })
     removePlayerFromGame('alice', game)
     expect(game.players).toEqual([bob])
+  })
+})
+
+describe('removePlayerFromGame', () => {
+  const roundInProgress = () => ({
+    roundId: 2,
+    isComplete: false,
+    messagesSimilarity: [],
+    messages: [buildMessage('alice', 'apple')],
+  })
+  const completeRound = () => ({
+    roundId: 1,
+    isComplete: true,
+    messagesSimilarity: [],
+    messages: [buildMessage('alice', 'plum'), buildMessage('bob', 'pear')],
+  })
+
+  it("drops the leaving player's answer from the round being played", () => {
+    const game = buildGame({
+      players: [alice, bob],
+      settings: { status: 'started' },
+      rounds: [completeRound(), roundInProgress()],
+    })
+
+    removePlayerFromGame('alice', game)
+
+    expect(game.rounds[1].messages).toEqual([])
+    // Complete rounds are history: they keep every answer
+    expect(game.rounds[0].messages).toHaveLength(2)
+  })
+
+  it('pauses a started game until the table is full again', () => {
+    const game = buildGame({ players: [alice, bob], settings: { status: 'started' } })
+
+    removePlayerFromGame('bob', game)
+
+    expect(game.settings.status).toBe('opened')
+  })
+
+  it('leaves a finished game finished', () => {
+    const game = buildGame({ players: [alice, bob], settings: { status: 'win' } })
+
+    removePlayerFromGame('bob', game)
+
+    expect(game.settings.status).toBe('win')
   })
 })
 

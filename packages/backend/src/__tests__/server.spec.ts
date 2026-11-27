@@ -1,6 +1,9 @@
 import type { Game, SocketEvent, SocketPayload, WebSocket } from '@word-guesser/shared'
 import type { FastifyInstance } from 'fastify'
 import { http, HttpResponse } from 'msw'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildServer } from '../server.js'
 import { HUGGING_FACE_URL, mswServer } from './setup/msw.js'
@@ -16,13 +19,23 @@ type Client = {
   closedByServer: Promise<number>
 }
 
-async function connect(server: FastifyInstance, userId: string): Promise<Client> {
+// Each test player proves its identity with its own secret token.
+const tokenOf = (userId: string) => `${userId}-secret-token-0123456789`
+
+async function connect(
+  server: FastifyInstance,
+  userId: string,
+  // null connects without any token
+  token: string | null = tokenOf(userId),
+): Promise<Client> {
   const inbox: SocketPayload[] = []
   let wakeUp: (() => void) | undefined
   let onClose: (code: number) => void = () => {}
   const closedByServer = new Promise<number>((resolve) => (onClose = resolve))
 
-  const ws = await server.injectWS(`/connect/${userId}?userName=${userId}-name`, undefined, {
+  const tokenParam = token === null ? '' : `&token=${token}`
+  const url = `/connect/${userId}?userName=${userId}-name${tokenParam}`
+  const ws = await server.injectWS(url, undefined, {
     // Listen before the connection opens: the server sends LIST_GAMES straight away.
     onInit: (socket) => {
       socket.on('message', (data) => {
@@ -112,6 +125,13 @@ describe('game server (WebSocket)', () => {
     await server.close()
   })
 
+  it('answers the health check used by Docker', async () => {
+    const response = await server.inject({ method: 'GET', url: '/health' })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({ status: 'ok' })
+  })
+
   it('sends the list of games to a player who connects', async () => {
     expect(await alice.next('LIST_GAMES')).toEqual([])
 
@@ -198,6 +218,32 @@ describe('game server (WebSocket)', () => {
 
     const carol = await connect(server, 'carol')
     expect(await carol.next('LIST_GAMES')).toEqual([])
+  })
+
+  it('finishes a round with the player who replaced one who quit', async () => {
+    const { gameId } = await startGame()
+    alice.send('PLAY_ROUND', { gameId, content: 'apple' })
+    await alice.next('PLAY_ROUND')
+    bob.send('PLAY_ROUND', { gameId, content: 'pear' })
+    await alice.next('PLAY_ROUND')
+    alice.send('PLAY_ROUND', { gameId, content: 'plum' })
+    await alice.next('PLAY_ROUND')
+
+    // Bob leaves while round 2 waits for his answer: the game pauses
+    bob.send('QUIT_GAME', { gameId })
+    expect((await alice.next<Game>('QUIT_GAME')).settings.status).toBe('opened')
+
+    const carol = await connect(server, 'carol')
+    carol.send('JOIN_GAME', { gameId })
+    expect((await alice.next<Game>('JOIN_GAME')).settings.status).toBe('started')
+    carol.send('PLAY_ROUND', { gameId, content: 'fig' })
+    const game = await alice.next<Game>('PLAY_ROUND')
+
+    expect(game.rounds[1].isComplete).toBe(true)
+    expect(game.rounds[1].messages.map((m) => [m.userId, m.content])).toEqual([
+      ['alice', 'plum'],
+      ['carol', 'fig'],
+    ])
   })
 
   it('renames a player in the games they joined', async () => {
@@ -505,6 +551,115 @@ describe('game server (WebSocket)', () => {
       const dave = await connect(server, 'dave')
 
       expect(await dave.closedByServer).toBe(1008)
+    })
+  })
+
+  describe('identity', () => {
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    it('refuses someone who uses the id of a connected player', async () => {
+      const impostor = await connect(server, 'alice', 'another-token-0123456789')
+
+      expect(await impostor.closedByServer).toBe(1008)
+    })
+
+    it('refuses a connection without a token', async () => {
+      const anonymous = await connect(server, 'carol', null)
+
+      expect(await anonymous.closedByServer).toBe(1008)
+    })
+
+    it('accepts the same player again with their token, e.g. in a second tab', async () => {
+      const secondTab = await connect(server, 'alice')
+
+      expect(await secondTab.next('LIST_GAMES')).toEqual([])
+    })
+
+    it("keeps a player's id while they hold a seat, even disconnected", async () => {
+      await startGame()
+      await alice.close()
+
+      const impostor = await connect(server, 'alice', 'another-token-0123456789')
+
+      expect(await impostor.closedByServer).toBe(1008)
+    })
+
+    it('frees an id that has no connection and no seat left', async () => {
+      await restartServer()
+      await alice.close()
+
+      vi.advanceTimersByTime(MINUTE)
+      const newcomer = await connect(server, 'alice', 'another-token-0123456789')
+
+      expect(await newcomer.next('LIST_GAMES')).toEqual([])
+    })
+  })
+
+  describe('saved state', () => {
+    let dir: string
+    let stateFile: string
+
+    beforeEach(() => {
+      dir = mkdtempSync(join(tmpdir(), 'word-guesser-'))
+      stateFile = join(dir, 'state.json')
+    })
+    afterEach(() => {
+      rmSync(dir, { recursive: true, force: true })
+    })
+
+    it('restores the games after a restart, with their players and rounds', async () => {
+      await restartServer({ stateFile })
+      const { gameId } = await startGame(longGame)
+      await playRound(gameId, 'apple', 'pear')
+      // Long enough for the players to count as gone if they disconnected for real
+      vi.setSystemTime(Date.now() + 10 * MINUTE)
+
+      await restartServer({ stateFile })
+
+      const [game] = await gamesSeenByNewcomer()
+      expect(game.gameId).toBe(gameId)
+      expect(game.players.map((p) => p.userId)).toEqual(['alice', 'bob'])
+      expect(game.rounds[0].messages.map((m) => m.content)).toEqual(['apple', 'pear'])
+    })
+
+    it('keeps the ids of seated players reserved after a restart', async () => {
+      await restartServer({ stateFile })
+      await startGame()
+      await server.close()
+
+      server = buildServer({ stateFile })
+      await server.ready()
+      const impostor = await connect(server, 'alice', 'another-token-0123456789')
+
+      expect(await impostor.closedByServer).toBe(1008)
+    })
+
+    it('saves every minute, in case the server crashes', async () => {
+      await restartServer({ stateFile })
+      const { gameId } = await startGame()
+
+      vi.advanceTimersByTime(MINUTE)
+
+      expect(readFileSync(stateFile, 'utf8')).toContain(gameId)
+    })
+
+    it('starts empty when the saved state is unreadable', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      writeFileSync(stateFile, '{ not json')
+
+      await restartServer({ stateFile })
+
+      expect(await gamesSeenByNewcomer()).toEqual([])
+    })
+
+    it('saves nothing without a state file', async () => {
+      await restartServer()
+      await startGame()
+      await server.close()
+
+      expect(existsSync(stateFile)).toBe(false)
     })
   })
 

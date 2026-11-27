@@ -2,6 +2,8 @@ import type { Game } from '@word-guesser/shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildGame, fakeGameServer } from '@/__tests__/fakeGameServer'
 import { logInAs, renderApp, unmountApp } from '@/__tests__/renderApp'
+import router from '@/router'
+import { useGamesStore } from '@/stores/useGamesStore'
 
 const alice = { userId: 'alice', userName: 'Alice' }
 const bob = { userId: 'bob', userName: 'Bob' }
@@ -114,6 +116,23 @@ describe('Game page', () => {
 
     await vi.waitFor(() => expect(app.wrapper.text()).toContain('You win'))
     expect(app.wrapper.find('form').exists()).toBe(false)
+  })
+
+  it('goes home after the game without deleting it for the other players', async () => {
+    fakeGameServer.games = [
+      buildGame({ gameId: 'g1', players: [alice, bob], settings: { name: 'Duo', status: 'win' } }),
+    ]
+    app = await renderApp('/game/g1')
+    await vi.waitFor(() => expect(app.wrapper.text()).toContain('You win'))
+
+    const goHome = app.wrapper.findAll('a').find((link) => link.text() === 'Go home')!
+    await goHome.trigger('click')
+
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/'))
+    // A last message as a marker: everything sent before it has arrived
+    useGamesStore(app.pinia).joinGame('marker')
+    await vi.waitFor(() => expect(fakeGameServer.receivedEvents('JOIN_GAME')).not.toHaveLength(0))
+    expect(fakeGameServer.receivedEvents('DELETE_GAME')).toEqual([])
   })
 
   it('leaves ending the game to the server when time runs out', async () => {
