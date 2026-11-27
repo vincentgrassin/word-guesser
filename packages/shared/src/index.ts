@@ -45,7 +45,11 @@ export type MessageSimilarity = {
   score: number | null
 }
 
-export type ScoreLevel = 'low' | 'medium' | 'high' | 'extreme'
+// An answer is one word, so that it can be scored: no space inside.
+// Hyphens and apostrophes are fine (arc-en-ciel, aujourd'hui).
+export const isSingleWord = (word: string) => !/\s/.test(word.trim())
+
+export type ScoreLevel ='low' | 'medium' | 'high' | 'extreme'
 
 // Calibrated for the backend's word vectors (fastText cc.fr.300, see
 // packages/backend/data): change them together with the vector file.

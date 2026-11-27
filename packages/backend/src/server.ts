@@ -10,6 +10,7 @@ import {
   hasPlayerLeftGame,
   removeGame,
   isPlayerInGame,
+  isSingleWord,
 } from '@word-guesser/shared'
 import fastify from 'fastify'
 import { createHash, timingSafeEqual } from 'node:crypto'
@@ -298,6 +299,7 @@ export function buildServer({ stateFile, ...limits }: ServerOptions = {}) {
               if (isOutOfTime(game, Date.now())) return refuse('Time is up')
               const word = readText(content, LIMITS.wordLength)
               if (!word) return refuse('Empty word')
+              if (!isSingleWord(word)) return refuse('One word only')
 
               touch(game)
               await updateRounds(game, {

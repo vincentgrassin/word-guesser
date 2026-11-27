@@ -1,6 +1,6 @@
 # 04 - One word per answer
 
-Status: open
+Status: done
 Blocked by: none
 
 ## What

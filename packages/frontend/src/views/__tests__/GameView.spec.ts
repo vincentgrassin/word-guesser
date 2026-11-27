@@ -56,6 +56,22 @@ describe('Game page', () => {
     expect(fakeGameServer.receivedEvents('JOIN_GAME')[0].gameId).toBe('g1')
   })
 
+  it('does not send a bet of several words, and says why', async () => {
+    fakeGameServer.games = [startedGame]
+    app = await renderApp('/game/g1')
+    const { wrapper } = app
+    await vi.waitFor(() => expect(wrapper.find('form').exists()).toBe(true))
+
+    await wrapper.find('form input').setValue('deux mots')
+    await wrapper.find('form').trigger('submit')
+
+    expect(wrapper.find('[role="alert"]').text()).toContain('One word only')
+    expect(fakeGameServer.receivedEvents('PLAY_ROUND')).toHaveLength(0)
+
+    await wrapper.find('form input').setValue('arc-en-ciel')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
   it("sends the player's bet, then hides the partner's bet until the round is complete", async () => {
     fakeGameServer.games = [startedGame]
     app = await renderApp('/game/g1')

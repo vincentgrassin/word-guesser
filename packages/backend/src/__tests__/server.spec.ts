@@ -266,6 +266,29 @@ describe('game server (WebSocket)', () => {
     return carol.next<Game[]>('LIST_GAMES')
   }
 
+  describe('one word per answer', () => {
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    it('refuses an answer with a space inside', async () => {
+      const { gameId } = await startGame()
+
+      alice.send('PLAY_ROUND', { gameId, content: 'deux mots' })
+
+      expect(await alice.next('ERROR')).toBe('One word only')
+    })
+
+    it.each(['arc-en-ciel', "aujourd'hui", '  mer  '])('accepts %j', async (word) => {
+      const { gameId } = await startGame()
+
+      alice.send('PLAY_ROUND', { gameId, content: word })
+
+      const game = await alice.next<Game>('PLAY_ROUND')
+      expect(game.rounds[0].messages[0].content).toBe(word.trim())
+    })
+  })
+
   describe('robustness', () => {
     beforeEach(() => {
       vi.spyOn(console, 'error').mockImplementation(() => {})

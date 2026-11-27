@@ -10,6 +10,7 @@ import {
   type Game,
   type ResponseMessage,
   scoreLevel,
+  isSingleWord,
 } from '../index'
 
 const buildGame = (overrides: Partial<Game> = {}): Game => ({
@@ -150,5 +151,15 @@ describe('scoreLevel', () => {
     [1, 'extreme'],
   ])('%s is %s', (score, level) => {
     expect(scoreLevel(score)).toBe(level)
+  })
+})
+
+describe('isSingleWord', () => {
+  it.each(['mer', 'arc-en-ciel', "aujourd'hui", '  mer  '])('accepts %j', (word) => {
+    expect(isSingleWord(word)).toBe(true)
+  })
+
+  it.each(['deux mots', 'mer\tplage', 'mer\nplage'])('refuses %j', (word) => {
+    expect(isSingleWord(word)).toBe(false)
   })
 })
